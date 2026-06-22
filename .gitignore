@@ -8,3 +8,4 @@ build/
 credentials/
 service-account.json
 backend/data/
+*.exe
