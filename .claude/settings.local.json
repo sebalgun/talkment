@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"D:\\\\AI\\\\talkment\" -Recurse -Force)",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)",
+      "PowerShell(Set-Location \"D:\\\\AI\\\\talkment\\\\backend\"; $p = Start-Process -NoNewWindow -PassThru -FilePath \"node\" -ArgumentList \"src/index.js\"; Start-Sleep -Seconds 3; $p.Kill\\(\\); Write-Host \"Startup OK\")"
+    ]
+  }
+}

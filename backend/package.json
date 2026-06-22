@@ -1,0 +1,23 @@
+{
+  "name": "voice-inventory-backend",
+  "version": "1.0.0",
+  "description": "음성 기반 재고관리 시스템 백엔드",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "reminder": "node src/jobs/returnReminder.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "google-auth-library": "^10.7.0",
+    "googleapis": "^144.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.16",
+    "openai": "^4.77.0"
+  }
+}

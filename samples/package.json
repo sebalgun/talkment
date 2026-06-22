@@ -1,0 +1,16 @@
+{
+  "name": "samples",
+  "version": "1.0.0",
+  "description": "어제 변경된 형식에 맞춘 **구글 스프레드시트(엑셀)** 템플릿입니다.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

@@ -1,0 +1,13 @@
+run = "bash start.sh"
+entrypoint = "start.sh"
+
+[nix]
+channel = "stable-24_05"
+
+[[ports]]
+localPort = 3001
+externalPort = 80
+
+[deployment]
+run = ["bash", "start.sh"]
+deploymentTarget = "cloudrun"
