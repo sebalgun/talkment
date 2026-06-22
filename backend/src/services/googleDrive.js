@@ -47,6 +47,7 @@ export async function uploadSignaturePng(base64Data, filename, folderId) {
       supportsAllDrives: true,
     });
   } catch (err) {
+    console.error('[Drive Upload Error]', err.message, err.code, JSON.stringify(err.errors || ''));
     const msg = err.message || '';
     if (msg.includes('storageQuotaExceeded') || msg.includes('storage quota')) {
       throw new Error(
