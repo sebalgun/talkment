@@ -58,6 +58,21 @@ async function request(path, options = {}, overrideSpreadsheetId) {
   return data;
 }
 
+/** 인증 토큰 포함 fetch — spreadsheetId 헤더 불필요한 보호 엔드포인트용 */
+async function authFetch(url, options = {}) {
+  const token = getAuthToken();
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(url, { cache: 'no-store', ...options, headers });
+  const data = await parseResponseJson(res);
+  if (!res.ok) {
+    const err = new Error(data.error || `HTTP ${res.status}`);
+    err.code = data.code;
+    throw err;
+  }
+  return data;
+}
+
 export const api = {
   verifyGoogleToken: (idToken) =>
     fetch(`${BASE}/auth/verify`, {
@@ -77,23 +92,10 @@ export const api = {
       return data;
     }),
 
-  getAppConfig: () =>
-    fetch(`${BASE}/app-config`, { cache: 'no-store' }).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
-    }),
+  getAppConfig: () => authFetch(`${BASE}/app-config`),
 
   saveAppConfig: (payload) =>
-    fetch(`${BASE}/app-config`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
-    }),
+    authFetch(`${BASE}/app-config`, { method: 'PUT', body: JSON.stringify(payload) }),
 
   parseSheetId: (url) =>
     fetch(`${BASE}/sheets/parse-id`, {
@@ -107,16 +109,8 @@ export const api = {
     }),
 
   verifySheet: (spreadsheetId) =>
-    fetch(`${BASE}/sheets/verify`, {
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Spreadsheet-Id': spreadsheetId,
-      },
-    }).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
+    authFetch(`${BASE}/sheets/verify`, {
+      headers: { 'X-Spreadsheet-Id': spreadsheetId },
     }),
 
   getEmployees: () => request('/employees'),
@@ -150,81 +144,40 @@ export const api = {
 
   // ── 온보딩 API (스프레드시트 ID 헤더 불필요) ──────────────
 
-  getOnboardingStatus: () =>
-    fetch(`${BASE}/onboarding/status`, { cache: 'no-store' }).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
-    }),
+  getOnboardingStatus: () => authFetch(`${BASE}/onboarding/status`),
 
   createWorkspace: ({ name, operationType }) =>
-    fetch(`${BASE}/onboarding/workspace`, {
+    authFetch(`${BASE}/onboarding/workspace`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, operationType }),
-    }).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
     }),
 
   saveWorkspaceSheets: (workspaceId, payload) =>
-    fetch(`${BASE}/onboarding/workspaces/${workspaceId}/sheets`, {
+    authFetch(`${BASE}/onboarding/workspaces/${workspaceId}/sheets`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    }).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
     }),
 
   completeOnboarding: (workspaceId) =>
-    fetch(`${BASE}/onboarding/complete`, {
+    authFetch(`${BASE}/onboarding/complete`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ workspaceId }),
-    }).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
     }),
 
   getSheetTabs: (spreadsheetId) =>
-    fetch(`${BASE}/onboarding/sheet-tabs?spreadsheetId=${encodeURIComponent(spreadsheetId)}`, {
-      cache: 'no-store',
-    }).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data; // { tabs: string[] }
-    }),
+    authFetch(`${BASE}/onboarding/sheet-tabs?spreadsheetId=${encodeURIComponent(spreadsheetId)}`),
 
   getSheetHeaders: (spreadsheetId, tabName) =>
-    fetch(
-      `${BASE}/onboarding/sheet-headers?spreadsheetId=${encodeURIComponent(spreadsheetId)}&tabName=${encodeURIComponent(tabName)}`,
-      { cache: 'no-store' }
-    ).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data; // { headers: string[] }
-    }),
+    authFetch(
+      `${BASE}/onboarding/sheet-headers?spreadsheetId=${encodeURIComponent(spreadsheetId)}&tabName=${encodeURIComponent(tabName)}`
+    ),
 
-  getFieldSchema: () =>
-    fetch(`${BASE}/onboarding/field-schema`, { cache: 'no-store' }).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
-    }),
+  getFieldSchema: () => authFetch(`${BASE}/onboarding/field-schema`),
 
   saveWorkspaceTabs: (workspaceId, tabs) =>
-    fetch(`${BASE}/onboarding/workspaces/${workspaceId}/tabs`, {
+    authFetch(`${BASE}/onboarding/workspaces/${workspaceId}/tabs`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tabs }),
-    }).then(async (res) => {
-      const data = await parseResponseJson(res);
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
     }),
 };
 
