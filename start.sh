@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-export PATH="$HOME/.nix-profile/bin:$PATH"
+export PATH="$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:$PATH"
 
 echo "=== Talkment 시작 ==="
 
@@ -18,10 +18,13 @@ else
 fi
 
 # 백엔드 의존성
-echo "[2/3] 백엔드 패키지 설치..."
-cd backend
-npm install --silent
-echo "[2/3] 완료"
+if [ ! -d "backend/node_modules" ]; then
+  echo "[2/3] 백엔드 패키지 설치..."
+  cd backend && npm install --silent && cd ..
+  echo "[2/3] 완료"
+else
+  echo "[2/3] 백엔드 패키지 스킵 (node_modules 존재)"
+fi
 
 # 기존 서버 프로세스 정리
 pkill -f "node src/index.js" 2>/dev/null || true
@@ -29,4 +32,5 @@ sleep 1
 
 # 서버 시작
 echo "[3/3] 서버 시작..."
+cd backend
 node src/index.js
