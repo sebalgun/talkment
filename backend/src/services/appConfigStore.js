@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from '../config/env.js';
+import * as replitDb from './replitDb.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = path.resolve(__dirname, '../../data/app-config.json');
@@ -22,6 +23,18 @@ function readRaw() {
 function writeRaw(data) {
   ensureDir();
   writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  replitDb.set('app_config', data); // fire and forget
+}
+
+/** Cloud Run 콜드스타트 시 Replit DB에서 파일 복원 */
+export async function restoreFromDb() {
+  if (existsSync(CONFIG_PATH)) return;
+  const data = await replitDb.get('app_config');
+  if (data) {
+    ensureDir();
+    writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    console.log('[AppConfig] Replit DB에서 설정 복원됨');
+  }
 }
 
 function sheetFromEnv() {

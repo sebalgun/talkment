@@ -42,6 +42,8 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ONBOARDING_STEPS, OPERATION_TYPES } from '../constants/onboardingSteps.js';
+import { getAppConfig } from './appConfigStore.js';
+import * as replitDb from './replitDb.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = path.resolve(__dirname, '../../data/workspaces.json');
@@ -75,6 +77,18 @@ function readRaw() {
 function writeRaw(data) {
   ensureDir();
   writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  replitDb.set('workspaces', data); // fire and forget
+}
+
+/** Cloud Run 콜드스타트 시 Replit DB에서 파일 복원 */
+export async function restoreFromDb() {
+  if (existsSync(CONFIG_PATH)) return;
+  const data = await replitDb.get('workspaces');
+  if (data) {
+    ensureDir();
+    writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    console.log('[Onboarding] Replit DB에서 설정 복원됨');
+  }
 }
 
 // ─── 공개 API ────────────────────────────────────────────────
@@ -82,10 +96,14 @@ function writeRaw(data) {
 /**
  * 최초 실행 여부 감지
  * - 등록된 작업 공간이 없거나 온보딩이 완료되지 않은 경우 true
+ * - 단, 환경변수 또는 app-config.json으로 시트가 설정된 경우 false (재배포 후 초기화 방지)
  */
 export function isFirstRun() {
   const state = readRaw();
-  return !state.onboarding?.completed || state.workspaces.length === 0;
+  if (state.onboarding?.completed && state.workspaces.length > 0) return false;
+  const { sheet } = getAppConfig();
+  if (sheet?.spreadsheetId) return false;
+  return true;
 }
 
 /**
@@ -93,9 +111,13 @@ export function isFirstRun() {
  */
 export function getOnboardingStatus() {
   const state = readRaw();
+  const envSheet = getAppConfig().sheet;
+  const completed =
+    (state.onboarding?.completed && state.workspaces.length > 0) ||
+    !!envSheet?.spreadsheetId;
   return {
-    isFirstRun: !state.onboarding?.completed || state.workspaces.length === 0,
-    completed: state.onboarding?.completed ?? false,
+    isFirstRun: !completed,
+    completed,
     currentStep: state.onboarding?.currentStep ?? ONBOARDING_STEPS.WORKSPACE_INFO,
     completedAt: state.onboarding?.completedAt ?? null,
     workspaceCount: state.workspaces?.length ?? 0,

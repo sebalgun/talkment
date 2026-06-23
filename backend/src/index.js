@@ -8,8 +8,8 @@ import { fileURLToPath } from 'url';
 import { config } from './config/env.js';
 import { runReturnReminder } from './jobs/returnReminder.js';
 import { spreadsheetMiddleware, parseSpreadsheetId } from './middleware/spreadsheetContext.js';
-import { getAppConfig } from './services/appConfigStore.js';
-import { getActiveWorkspace } from './services/onboardingStore.js';
+import { getAppConfig, restoreFromDb as restoreAppConfig } from './services/appConfigStore.js';
+import { getActiveWorkspace, restoreFromDb as restoreWorkspaces } from './services/onboardingStore.js';
 import { masterStore } from './services/masterDataStore.js';
 
 import sheetsRouter from './routes/sheets.js';
@@ -113,6 +113,9 @@ app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: err.message || 'Internal Server Error' });
 });
+
+// Cloud Run 콜드스타트: Replit DB에서 설정 파일 복원 후 서버 시작
+await Promise.all([restoreAppConfig(), restoreWorkspaces()]);
 
 app.listen(config.port, '0.0.0.0', () => {
   const lan = Object.values(os.networkInterfaces())
