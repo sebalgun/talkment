@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+export PATH="$HOME/.nix-profile/bin:$PATH"
+
 echo "=== Talkment 시작 ==="
 
 # 프론트엔드 빌드 (dist 없거나 강제 재빌드 시)
