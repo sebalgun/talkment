@@ -21,6 +21,10 @@ cd backend
 npm install --silent
 echo "[2/3] 완료"
 
+# 기존 서버 프로세스 정리
+pkill -f "node src/index.js" 2>/dev/null || true
+sleep 1
+
 # 서버 시작
 echo "[3/3] 서버 시작..."
 node src/index.js
