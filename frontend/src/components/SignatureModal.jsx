@@ -16,7 +16,7 @@ export default function SignatureModal() {
     setError(null);
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
@@ -72,7 +72,7 @@ export default function SignatureModal() {
     setSubmitting(true);
     setError(null);
     try {
-      const base64 = canvasRef.current.toDataURL('image/png');
+      const base64 = canvasRef.current.toDataURL('image/jpeg', 0.92);
       let textOnly = false;
 
       if (modal.mode === 'checkout') {

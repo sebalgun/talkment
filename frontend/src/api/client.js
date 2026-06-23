@@ -21,7 +21,7 @@ async function parseResponseJson(res) {
   const trimmed = text.trim();
   if (trimmed.startsWith('<')) {
     throw new Error(
-      'API 서버에 연결되지 않았습니다. 시작.bat으로 서버를 실행했는지, zrok/개발 모드 포트가 맞는지 확인해 주세요.'
+      'API 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해 주세요.'
     );
   }
   try {
