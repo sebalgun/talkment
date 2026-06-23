@@ -9,7 +9,9 @@ import { SHEET_NAMES } from '../constants/sheetNames.js';
 const router = Router();
 
 function getSheets() {
-  const credentials = JSON.parse(readFileSync(config.google.serviceAccountPath, 'utf-8'));
+  const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+    ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON)
+    : JSON.parse(readFileSync(config.google.serviceAccountPath, 'utf-8'));
   const auth = new google.auth.GoogleAuth({
     credentials,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
