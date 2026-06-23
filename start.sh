@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-source ~/.bashrc 2>/dev/null || true
-export PATH="$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:$PATH"
 
 echo "=== Talkment 시작 ==="
 
