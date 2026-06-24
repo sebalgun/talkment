@@ -10,5 +10,6 @@ localPort = 3001
 externalPort = 80
 
 [deployment]
+build = ["npm", "install", "--prefix", "backend", "--omit=dev"]
 run = ["bash", "start.sh"]
 deploymentTarget = "cloudrun"
