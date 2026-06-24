@@ -8,5 +8,8 @@
     "dev:app": "npm run dev --prefix frontend",
     "build": "npm run build --prefix frontend",
     "start": "npm run build && npm run start --prefix backend"
+  },
+  "overrides": {
+    "shell-quote": "1.8.4"
   }
 }
