@@ -20,6 +20,7 @@
   --mic-size: 88px;
   --header-h: 52px;
   --mic-area-h: 120px;
+  --tab-bar-h: 56px;
 }
 
 body {
@@ -87,7 +88,7 @@ body {
 .app-main {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: calc(var(--mic-area-h) + 16px);
+  padding-bottom: calc(var(--mic-area-h) + var(--tab-bar-h) + 16px);
 }
 
 /* ── Screens ── */
@@ -258,7 +259,7 @@ body {
 /* ── Mic FAB (Screen A bottom) ── */
 .mic-fab-container {
   position: fixed;
-  bottom: 0;
+  bottom: var(--tab-bar-h);
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
@@ -543,7 +544,7 @@ body {
 
 .status-floating {
   position: fixed;
-  bottom: calc(var(--mic-area-h) + 8px);
+  bottom: calc(var(--mic-area-h) + var(--tab-bar-h) + 8px);
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 32px);
@@ -1617,4 +1618,215 @@ body {
   border-top: 1px solid var(--border);
   padding-top: 16px;
   margin-top: 4px;
+}
+
+/* ── 연체 배너 ── */
+.dash-overdue-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+  color: var(--danger);
+  font-weight: 600;
+  cursor: pointer;
+}
+.dash-overdue-banner:hover { background: #fee2e2; }
+
+/* ── 하단 탭바 ── */
+.bottom-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: var(--tab-bar-h);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: stretch;
+  z-index: 100;
+}
+
+.bottom-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0 6px;
+  transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-tab:active { background: #f1f5f9; }
+
+.bottom-tab-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: transform 0.15s;
+}
+
+.bottom-tab.active .bottom-tab-icon {
+  transform: scale(1.1);
+}
+
+.bottom-tab-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.bottom-tab.active .bottom-tab-label {
+  color: var(--primary);
+}
+
+/* ── 반출이력 타임라인 ── */
+.screen-history {
+  padding: 16px;
+}
+
+.history-toolbar {
+  margin-bottom: 14px;
+}
+
+.history-search {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  background: var(--surface);
+  margin-bottom: 8px;
+  display: block;
+}
+.history-search:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.history-filters {
+  display: flex;
+  gap: 6px;
+}
+
+.history-filter-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.8125rem;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.history-filter-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+.history-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.history-date-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+}
+
+.history-item-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.history-item-dot[data-status="returned"] { background: var(--success); }
+.history-item-dot[data-status="overdue"]  { background: var(--danger); }
+.history-item-dot[data-status="out"]      { background: #f59e0b; }
+
+.history-item-body { flex: 1; min-width: 0; }
+
+.history-item-main {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.history-item-serial {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.history-item-meta {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.history-item-return {
+  font-size: 0.75rem;
+  color: var(--success);
+}
+
+.history-item-due {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.history-item-due.overdue { color: var(--danger); font-weight: 600; }
+
+.badge-danger { background: #fef2f2; color: var(--danger); }
+
+/* ── 설정 화면 ── */
+.screen-settings {
+  padding: 16px;
+}
+
+.settings-user {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-user-name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.settings-user-email {
+  font-size: 0.8125rem;
+  color: var(--muted);
 }

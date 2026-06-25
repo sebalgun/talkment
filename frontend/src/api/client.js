@@ -145,6 +145,8 @@ export const api = {
       body: JSON.stringify({ tab, rowIndex, fields }),
     }),
 
+  getDashboardStats: () => request('/dashboard/stats'),
+
   // ── 온보딩 API (스프레드시트 ID 헤더 불필요) ──────────────
 
   getOnboardingStatus: () => authFetch(`${BASE}/onboarding/status`),

@@ -34,7 +34,7 @@ export default function DashboardScreen() {
   const { state, dispatch } = useApp();
   const { version, activeSheet } = useSheet();
 
-  const [summary, setSummary] = useState({ available: 0, unreturned: 0, consumable: 0 });
+  const [summary, setSummary] = useState({ available: 0, unreturned: 0, consumable: 0, overdue: 0 });
   const [assets, setAssets] = useState([]);
   const [tabData, setTabData] = useState([]);
   const [fetching, setFetching] = useState(false);
@@ -57,10 +57,16 @@ export default function DashboardScreen() {
       ]);
 
       setAssets(assetList);
+      const today = new Date().toISOString().slice(0, 10);
       setSummary({
         available: assetList.filter((r) => !isSerialOut(r['상태'])).length,
         unreturned: serialLog.filter((r) => !String(r['반납일'] || '').trim()).length,
         consumable: master.reduce((s, m) => s + parseInt(m['현재 잔여갯수'] || 0, 10), 0),
+        overdue: serialLog.filter((r) => {
+          const returned = String(r['반납일'] || '').trim();
+          const due = String(r['반납예정일'] || '').replace(/\./g, '-').trim().slice(0, 10);
+          return !returned && !!due && due < today;
+        }).length,
       });
 
       const tab = sheetTabs.find((t) => t.id === state.sheetTab);
@@ -172,6 +178,16 @@ export default function DashboardScreen() {
           <span className="dash-stat-lbl">소모품 잔여</span>
         </button>
       </div>
+
+      {/* ── 연체 배너 ── */}
+      {summary.overdue > 0 && (
+        <button
+          className="dash-overdue-banner"
+          onClick={openUnreturnedDetail}
+        >
+          ⚠️ 반납 연체 {summary.overdue}건 — 예정일 초과 항목이 있습니다
+        </button>
+      )}
 
       {/* ── 반출 · 반납 액션 카드 ── */}
       <div className="dash-action-card">
