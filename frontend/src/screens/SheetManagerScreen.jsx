@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import { parseSpreadsheetId } from '../utils/sheetConfig';
-import { REQUIRED_SHEET_TABS, SHEET_TAB_COPY_LIST } from '../constants/sheets';
 import { useSheet } from '../context/SheetContext';
 import { INVENTORY_MODES } from '../constants/inventoryModes';
 import DriveSetupSection from '../components/DriveSetupSection';
@@ -29,20 +28,16 @@ function SheetRegisterForm({ existingSheet, onRegistered }) {
     try {
       const result = await api.verifySheet(spreadsheetId);
       setVerifyResult(result);
-      if (!result.ok) {
-        setError(`필수 탭 누락: ${result.missingTabs.join(', ')}`);
-      } else if (!alias.trim()) {
-        setAlias(result.title);
-      }
+      if (!alias.trim()) setAlias(result.title);
     } catch (e) {
-      setError(e.message || '연결 실패. 서비스 계정 공유 권한을 확인해 주세요.');
+      setError(e.message || '연결 실패. 서비스 계정에 편집자 공유 권한을 확인해 주세요.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleRegister = async () => {
-    if (!verifyResult?.ok) return;
+    if (!verifyResult?.spreadsheetId) return;
     setLoading(true);
     setError(null);
     try {
@@ -121,26 +116,14 @@ function SheetRegisterForm({ existingSheet, onRegistered }) {
         {parsedId && <span className="parsed-id">ID: {parsedId}</span>}
       </div>
 
-      <div className="setup-checklist">
-        <h3>
-          필수 탭 ({REQUIRED_SHEET_TABS.length}개) — 탭 이름을 아래와 <strong>완전히 동일</strong>하게
-        </h3>
-        <pre className="tab-copy-box">{SHEET_TAB_COPY_LIST}</pre>
-        <ul>
-          {REQUIRED_SHEET_TABS.map((tab) => {
-            const found = verifyResult?.tabs?.includes(tab);
-            return (
-              <li key={tab} className={verifyResult ? (found ? 'ok' : 'missing') : ''}>
-                {verifyResult ? (found ? '✓' : '✗') : '·'} {tab}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      {verifyResult?.ok && (
+      {verifyResult?.spreadsheetId && (
         <div className="status-msg success">
           연결 성공: <strong>{verifyResult.title}</strong>
+          {verifyResult.tabs?.length > 0 && (
+            <div style={{ marginTop: 6, fontSize: '0.8125rem', opacity: 0.85 }}>
+              탭 {verifyResult.tabs.length}개 확인됨 — {verifyResult.tabs.join(', ')}
+            </div>
+          )}
         </div>
       )}
       {error && <div className="status-msg error">{error}</div>}
@@ -149,7 +132,7 @@ function SheetRegisterForm({ existingSheet, onRegistered }) {
         <button type="button" className="btn btn-outline" onClick={handleVerify} disabled={loading || !url.trim()}>
           {loading ? '확인 중...' : '연결 테스트'}
         </button>
-        <button type="button" className="btn btn-primary" onClick={handleRegister} disabled={loading || !verifyResult?.ok}>
+        <button type="button" className="btn btn-primary" onClick={handleRegister} disabled={loading || !verifyResult?.spreadsheetId}>
           {loading ? '저장 중...' : '등록'}
         </button>
       </div>
