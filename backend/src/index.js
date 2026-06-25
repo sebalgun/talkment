@@ -23,6 +23,7 @@ import signatureRouter from './routes/signature.js';
 import configRouter from './routes/config.js';
 import onboardingRouter from './routes/onboarding.js';
 import dashboardRouter from './routes/dashboard.js';
+import inventoryRouter from './routes/inventory.js';
 import authRouter from './routes/auth.js';
 import { authMiddleware } from './middleware/authMiddleware.js';
 import { SIGNATURES_DIR } from './services/localSignatureStorage.js';
@@ -99,6 +100,7 @@ app.use('/api/checkout', checkoutRouter);
 app.use('/api/returns', returnsRouter);
 app.use('/api/signature', signatureRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/inventory', inventoryRouter);
 
 /** 등록되지 않은 API 경로 — SPA index.html로 떨어지지 않게 */
 app.use('/api', (_req, res) => {

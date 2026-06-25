@@ -30,6 +30,15 @@ export default function MicButton() {
     }
   };
 
+  // 대시보드 상단 버튼에서 외부 트리거 수신
+  useEffect(() => {
+    const handler = () => {
+      if (!listening && !state.loading) { setTranscript(''); start(); }
+    };
+    window.addEventListener('talkment_trigger_mic', handler);
+    return () => window.removeEventListener('talkment_trigger_mic', handler);
+  }, [listening, state.loading, start, setTranscript]);
+
   const showMic =
     activeMode === INVENTORY_MODES.INTERNAL &&
     state.screen === SCREENS.DASHBOARD &&

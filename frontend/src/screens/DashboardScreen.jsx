@@ -1,305 +1,251 @@
 import { useEffect, useCallback, useState } from 'react';
 import { api } from '../api/client';
-import { useApp, getSheetTabsForMode } from '../context/AppContext';
+import { useApp, SCREENS } from '../context/AppContext';
 import { useSheet } from '../context/SheetContext';
-import {
-  processVoiceCommand,
-  processReturnSearch,
-  openManualCheckoutForm,
-} from '../components/VoiceCommandHandler';
-import {
-  AssetGroupCard,
-  AssetCard,
-  SerialLogCard,
-  ConsumableCard,
-  LogCard,
-  EmployeeCard,
-  isSerialOut,
-} from '../components/SheetItemCards';
+import { processReturnSearch, openManualCheckoutForm } from '../components/VoiceCommandHandler';
 
-function groupAssets(assets) {
+// ── 재고 아이템 그룹화 ────────────────────────────────────────
+function groupInventory(items) {
   const map = new Map();
-  for (const a of assets) {
-    const name = a['항목'] || '(미분류)';
-    if (!map.has(name)) map.set(name, { itemName: name, total: 0, checkedOut: 0, items: [] });
-    const g = map.get(name);
-    g.total++;
-    if (isSerialOut(a['상태'])) g.checkedOut++;
-    g.items.push(a);
+  for (const item of items) {
+    const name = item._itemName;
+    if (!map.has(name)) {
+      map.set(name, { itemName: name, type: item._type, items: [] });
+    }
+    map.get(name).items.push(item);
   }
   return [...map.values()];
 }
 
+// ── 시리얼 그룹 카드 ──────────────────────────────────────────
+function SerialGroupCard({ group, onItemClick }) {
+  const available = group.items.filter((i) => i._status === 'available').length;
+  const total = group.items.length;
+
+  return (
+    <div className="inv-group-card">
+      <div className="inv-group-header">
+        <span className="inv-group-name">{group.itemName}</span>
+        <span className={`inv-group-badge ${available === 0 ? 'badge-danger' : available < total ? 'badge-warn' : 'badge-ok'}`}>
+          {available}/{total} 가용
+        </span>
+      </div>
+      <div className="inv-serial-list">
+        {group.items.map((item) => (
+          <button
+            key={item._rowIndex}
+            className="inv-serial-row"
+            onClick={() => onItemClick(item)}
+          >
+            <span className={`inv-status-dot ${item._status === 'available' ? 'available' : 'checked-out'}`} />
+            <span className="inv-serial-num">{item._serialNumber}</span>
+            {item._spec && <span className="inv-serial-spec">{item._spec}</span>}
+            <span className={`inv-status-text ${item._status === 'available' ? 'text-ok' : 'text-danger'}`}>
+              {item._status === 'available' ? '보유중' : '반출완료'}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── 소모품 카드 ───────────────────────────────────────────────
+function ConsumableCard({ item, onItemClick }) {
+  return (
+    <button className="inv-group-card inv-consumable-card" onClick={() => onItemClick(item)}>
+      <div className="inv-consumable-row">
+        <div>
+          <div className="inv-group-name">{item._itemName}</div>
+          {item._spec && <div className="inv-consumable-spec">{item._spec}</div>}
+        </div>
+        <div className="inv-consumable-right">
+          <span className={`inv-consumable-qty ${item._isLowStock ? 'qty-low' : ''}`}>
+            {item._quantity}
+          </span>
+          <span className="inv-consumable-unit">개</span>
+        </div>
+      </div>
+      {item._isLowStock && (
+        <div className="inv-low-stock">
+          ⚠️ 재고 부족 — 최소 {item._minQuantity}개
+        </div>
+      )}
+    </button>
+  );
+}
+
+// ── 메인 대시보드 ─────────────────────────────────────────────
 export default function DashboardScreen() {
   const { state, dispatch } = useApp();
-  const { version, activeSheet } = useSheet();
+  const { version } = useSheet();
 
-  const [summary, setSummary] = useState({ available: 0, unreturned: 0, consumable: 0, overdue: 0 });
-  const [assets, setAssets] = useState([]);
-  const [tabData, setTabData] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [stats, setStats] = useState({ returns: { unreturned: 0, overdue: 0 } });
   const [fetching, setFetching] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState(null);
-
-  // 반출/반납 입력
-  const [mode, setMode] = useState('checkout');
-  const [text, setText] = useState('');
-
-  const sheetTabs = getSheetTabsForMode();
+  const [returnQuery, setReturnQuery] = useState('');
+  const [showReturnInput, setShowReturnInput] = useState(false);
 
   const loadData = useCallback(async () => {
     setFetching(true);
     try {
-      const [assetList, serialLog, master, log] = await Promise.all([
-        api.getAssets(),
-        api.getSerialLog(),
-        api.getConsumableMaster(),
-        api.getConsumableLog(),
+      const [inv, st] = await Promise.all([
+        api.getInventory(),
+        api.getDashboardStats().catch(() => null),
       ]);
-
-      setAssets(assetList);
-      const today = new Date().toISOString().slice(0, 10);
-      setSummary({
-        available: assetList.filter((r) => !isSerialOut(r['상태'])).length,
-        unreturned: serialLog.filter((r) => !String(r['반납일'] || '').trim()).length,
-        consumable: master.reduce((s, m) => s + parseInt(m['현재 잔여갯수'] || 0, 10), 0),
-        overdue: serialLog.filter((r) => {
-          const returned = String(r['반납일'] || '').trim();
-          const due = String(r['반납예정일'] || '').replace(/\./g, '-').trim().slice(0, 10);
-          return !returned && !!due && due < today;
-        }).length,
-      });
-
-      const tab = sheetTabs.find((t) => t.id === state.sheetTab);
-      if (tab?.id === 'assets') setTabData(assetList);
-      else if (tab?.id === 'serialLog') setTabData(serialLog);
-      else if (tab?.id === 'consumableMaster') setTabData(master);
-      else if (tab?.id === 'consumableLog') setTabData(log);
-      else if (tab?.id === 'employees') {
-        const emp = await api.getEmployees();
-        setTabData(emp);
-      }
+      setInventory(inv);
+      if (st) setStats(st);
     } catch (e) {
       dispatch({ type: 'SET_STATUS', payload: { type: 'error', msg: e.message } });
     } finally {
       setFetching(false);
     }
-  }, [state.sheetTab, state.refreshKey, dispatch, version]);
+  }, [state.refreshKey, dispatch, version]);
 
   useEffect(() => { loadData(); }, [loadData]);
-  useEffect(() => { setSelectedGroup(null); }, [state.sheetTab]);
 
-  const openRow = (row) =>
-    dispatch({ type: 'GO_ROW_DETAIL', payload: { row, tab: state.sheetTab } });
+  const handleVoiceClick = () => {
+    window.dispatchEvent(new CustomEvent('talkment_trigger_mic'));
+  };
 
-  const openUnreturnedDetail = async () => {
-    if (summary.unreturned === 0) {
-      dispatch({ type: 'SET_STATUS', payload: { type: 'info', msg: '미반납 항목이 없습니다.' } });
-      return;
-    }
+  const handleItemClick = (item) => {
+    dispatch({ type: 'GO_ROW_DETAIL', payload: { row: item, tab: item._type === 'serial' ? 'assets' : 'consumableMaster' } });
+  };
+
+  const handleUnreturnedClick = async () => {
+    if (stats.returns.unreturned === 0) return;
     try {
       const items = await api.searchReturns('');
-      dispatch({
-        type: 'GO_RETURN_LIST',
-        payload: { query: '전체 미반납 현황', items, status: null },
-      });
+      dispatch({ type: 'GO_RETURN_LIST', payload: { query: '전체 미반납', items, status: null } });
     } catch (e) {
       dispatch({ type: 'SET_STATUS', payload: { type: 'error', msg: e.message } });
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleReturnSearch = (e) => {
     e.preventDefault();
-    const value = text.trim();
-    if (!value) return;
-    setText('');
-    if (mode === 'return') processReturnSearch(value, dispatch);
-    else processVoiceCommand(value, dispatch);
+    if (!returnQuery.trim()) return;
+    processReturnSearch(returnQuery.trim(), dispatch);
+    setReturnQuery('');
+    setShowReturnInput(false);
   };
 
-  const handleModeChange = (m) => {
-    setMode(m);
-    setText('');
-  };
-
-  const renderTabCards = () => {
-    if (fetching) return <div className="empty">불러오는 중...</div>;
-    if (tabData.length === 0) return <div className="empty">데이터가 없습니다</div>;
-
-    if (state.sheetTab === 'assets') {
-      if (selectedGroup) {
-        return selectedGroup.items.map((d) => (
-          <AssetCard key={d._rowIndex} item={d} onOpen={() => openRow(d)} />
-        ));
-      }
-      return groupAssets(tabData).map((g) => (
-        <AssetGroupCard key={g.itemName} group={g} onOpen={() => setSelectedGroup(g)} />
-      ));
-    }
-    if (state.sheetTab === 'serialLog')
-      return tabData.map((d) => <SerialLogCard key={d._rowIndex} item={d} onOpen={() => openRow(d)} />);
-    if (state.sheetTab === 'consumableMaster')
-      return tabData.map((d) => <ConsumableCard key={d._rowIndex} item={d} onOpen={() => openRow(d)} />);
-    if (state.sheetTab === 'consumableLog')
-      return tabData.map((d) => <LogCard key={d._rowIndex} item={d} onOpen={() => openRow(d)} />);
-    if (state.sheetTab === 'employees')
-      return tabData.map((d) => <EmployeeCard key={d._rowIndex} item={d} onOpen={() => openRow(d)} />);
-    return null;
-  };
-
-  const currentTabLabel = sheetTabs.find((t) => t.id === state.sheetTab)?.label;
-  const assetGroups = groupAssets(assets);
+  const groups = groupInventory(inventory);
+  const itemTypeCount = groups.length;
+  const { unreturned = 0, overdue = 0 } = stats.returns || {};
 
   return (
     <div className="screen screen-dashboard">
 
-      {/* ── 상단 요약 칩 ── */}
+      {/* ── 음성 입력 버튼 ── */}
+      <button
+        className={`dash-voice-btn ${state.loading ? 'loading' : ''}`}
+        onClick={handleVoiceClick}
+        disabled={state.loading}
+      >
+        <span className="dash-voice-icon">🎤</span>
+        <div className="dash-voice-text">
+          <span className="dash-voice-title">
+            {state.loading ? '처리 중...' : state.transcript ? `"${state.transcript}"` : '탭하여 음성으로 반출·반납'}
+          </span>
+          <span className="dash-voice-hint">말씀하세요 — AI가 자동으로 처리합니다</span>
+        </div>
+      </button>
+
+      {/* ── 요약 칩 ── */}
       <div className="dash-stats">
-        <button
-          className="dash-stat-chip"
-          onClick={() => dispatch({ type: 'GO_SUMMARY_DETAIL', payload: { type: 'available' } })}
-        >
-          <span className="dash-stat-num">{summary.available}</span>
-          <span className="dash-stat-lbl">출고가능</span>
-        </button>
+        <div className="dash-stat-chip">
+          <span className="dash-stat-num">{itemTypeCount}</span>
+          <span className="dash-stat-lbl">총 품목 종류</span>
+        </div>
         <div className="dash-stat-sep" />
         <button
-          className={`dash-stat-chip ${summary.unreturned > 0 ? 'dash-stat-warn' : ''}`}
-          onClick={openUnreturnedDetail}
+          className={`dash-stat-chip ${unreturned > 0 ? 'dash-stat-warn' : ''}`}
+          onClick={handleUnreturnedClick}
         >
-          <span className="dash-stat-num">{summary.unreturned}</span>
+          <span className="dash-stat-num">{unreturned}</span>
           <span className="dash-stat-lbl">미반납</span>
         </button>
         <div className="dash-stat-sep" />
-        <button
-          className="dash-stat-chip"
-          onClick={() => dispatch({ type: 'GO_SUMMARY_DETAIL', payload: { type: 'consumable' } })}
-        >
-          <span className="dash-stat-num">{summary.consumable}</span>
-          <span className="dash-stat-lbl">소모품 잔여</span>
-        </button>
+        <div className={`dash-stat-chip ${overdue > 0 ? 'dash-stat-danger' : ''}`}>
+          <span className="dash-stat-num">{overdue}</span>
+          <span className="dash-stat-lbl">연체</span>
+        </div>
       </div>
 
       {/* ── 연체 배너 ── */}
-      {summary.overdue > 0 && (
-        <button
-          className="dash-overdue-banner"
-          onClick={openUnreturnedDetail}
-        >
-          ⚠️ 반납 연체 {summary.overdue}건 — 예정일 초과 항목이 있습니다
+      {overdue > 0 && (
+        <button className="dash-overdue-banner" onClick={handleUnreturnedClick}>
+          ⚠️ 반납 연체 {overdue}건 — 예정일 초과 항목이 있습니다
         </button>
       )}
 
-      {/* ── 반출 · 반납 액션 카드 ── */}
-      <div className="dash-action-card">
-        <div className="dash-mode-btns">
-          <button
-            type="button"
-            className={`dash-mode-btn ${mode === 'checkout' ? 'active' : ''}`}
-            onClick={() => handleModeChange('checkout')}
-          >
-            📤 반출
-          </button>
-          <button
-            type="button"
-            className={`dash-mode-btn ${mode === 'return' ? 'active' : ''}`}
-            onClick={() => handleModeChange('return')}
-          >
-            📥 반납
-          </button>
+      {/* ── 재고 목록 ── */}
+      <div className="inv-section">
+        <div className="inv-section-header">
+          <span>재고 현황</span>
+          {fetching && <span className="dash-fetching">···</span>}
         </div>
 
-        <form className="dash-input-row" onSubmit={handleSubmit}>
-          <input
-            className="dash-input"
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={
-              mode === 'checkout'
-                ? '이름 + 품목 + 시리얼 (예: 홍길동 PC 100-1)'
-                : '이름, 품목, 시리얼 중 하나 입력'
-            }
-            disabled={state.loading}
-            autoComplete="off"
-          />
-          <button
-            type="submit"
-            className={`dash-submit-btn ${mode === 'return' ? 'return' : ''}`}
-            disabled={state.loading || !text.trim()}
-          >
-            {state.loading ? '⟳' : mode === 'return' ? '검색' : '출고'}
-          </button>
-        </form>
+        {!fetching && groups.length === 0 && (
+          <div className="empty-hint">
+            [물품관리] 시트에 데이터가 없습니다
+          </div>
+        )}
 
-        <div className="dash-action-footer">
-          <span className="dash-mic-hint">🎤 화면 아래 버튼으로 음성 입력 가능</span>
-          {mode === 'checkout' && (
+        {groups.map((group) =>
+          group.type === 'serial' ? (
+            <SerialGroupCard
+              key={group.itemName}
+              group={group}
+              onItemClick={handleItemClick}
+            />
+          ) : (
+            // 소모품은 아이템별로 개별 카드
+            group.items.map((item) => (
+              <ConsumableCard
+                key={item._rowIndex}
+                item={item}
+                onItemClick={handleItemClick}
+              />
+            ))
+          )
+        )}
+      </div>
+
+      {/* ── 보조 액션 ── */}
+      <div className="dash-secondary-actions">
+        {showReturnInput ? (
+          <form className="dash-return-form" onSubmit={handleReturnSearch}>
+            <input
+              autoFocus
+              value={returnQuery}
+              onChange={(e) => setReturnQuery(e.target.value)}
+              placeholder="이름, 품목, 시리얼 입력"
+              className="dash-return-input"
+            />
+            <button type="submit" className="btn btn-outline btn-sm">검색</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowReturnInput(false)}>취소</button>
+          </form>
+        ) : (
+          <div className="dash-action-btns">
             <button
-              type="button"
               className="btn btn-ghost btn-sm"
-              disabled={state.loading}
               onClick={() => openManualCheckoutForm(dispatch)}
             >
-              폼 직접 작성
+              📝 직접 입력 (반출)
             </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── 물품 현황 ── */}
-      {assetGroups.length > 0 && (
-        <div className="dash-inventory">
-          <div className="dash-inventory-header">
-            <span>물품 현황</span>
-            {fetching && <span className="dash-fetching">···</span>}
-          </div>
-          <div className="dash-asset-grid">
-            {assetGroups.map((g) => (
-              <AssetGroupCard
-                key={g.itemName}
-                group={g}
-                onOpen={() => {
-                  dispatch({ type: 'SET_SHEET_TAB', payload: 'assets' });
-                  setSelectedGroup(g);
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── 상세 데이터 탭 (스크롤 아래) ── */}
-      <div className="dash-detail-section">
-        <nav className="sheet-tab-bar">
-          {sheetTabs.map((tab) => (
             <button
-              key={tab.id}
-              className={state.sheetTab === tab.id ? 'active' : ''}
-              onClick={() => dispatch({ type: 'SET_SHEET_TAB', payload: tab.id })}
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowReturnInput(true)}
             >
-              {tab.label}
+              📥 반납 검색
             </button>
-          ))}
-        </nav>
-
-        <div className="card-grid">
-          <div className="card-grid-header">
-            {selectedGroup && state.sheetTab === 'assets' ? (
-              <>
-                <button className="back-btn" onClick={() => setSelectedGroup(null)}>← 목록</button>
-                <h2>{selectedGroup.itemName}</h2>
-              </>
-            ) : (
-              <>
-                <h2>{currentTabLabel}</h2>
-                <span className="card-grid-hint">탭하여 상세 · 수정</span>
-              </>
-            )}
           </div>
-          {renderTabCards()}
-        </div>
+        )}
       </div>
 
+      {/* ── 상태 메시지 ── */}
       {state.status && (
         <div className={`status-msg ${state.status.type} status-floating`}>
           {state.status.msg}

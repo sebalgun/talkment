@@ -116,6 +116,8 @@ export const api = {
       headers: { 'X-Spreadsheet-Id': spreadsheetId },
     }),
 
+  getInventory: () => request('/inventory'),
+
   getEmployees: () => request('/employees'),
   getAssets: () => request('/assets'),
   getSerialLog: () => request('/assets/log'),
