@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { fetchSheetRows, SHEET_NAMES } from '../services/googleSheets.js';
 import { parseSerialAssets, parseSerialLog } from '../services/sheetParser.js';
+import { getActiveWorkspace } from '../services/onboardingStore.js';
 
 const router = Router();
 
@@ -12,6 +13,8 @@ const router = Router();
  */
 router.get('/', async (_req, res, next) => {
   try {
+    const ws = getActiveWorkspace();
+    if (ws?.inventoryType === 'consumable') return res.json([]);
     const raw = await fetchSheetRows(SHEET_NAMES.SERIAL_ASSETS);
     res.json(parseSerialAssets(raw));
   } catch (err) {
@@ -25,6 +28,8 @@ router.get('/', async (_req, res, next) => {
  */
 router.get('/log', async (_req, res, next) => {
   try {
+    const ws = getActiveWorkspace();
+    if (ws?.inventoryType === 'consumable') return res.json([]);
     const raw = await fetchSheetRows(SHEET_NAMES.SERIAL_LOG);
     res.json(parseSerialLog(raw));
   } catch (err) {

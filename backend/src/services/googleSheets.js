@@ -36,12 +36,23 @@ function getSheets() {
   return google.sheets({ version: 'v4', auth: getAuth() });
 }
 
-/** 캐시 없이 항상 최신 시트 데이터를 페치 */
+/** 캐시 없이 항상 최신 시트 데이터를 페치 — 탭이 없으면 빈 배열 반환 */
 export async function fetchSheetRows(sheetName) {
-  const res = await getSheets().spreadsheets.values.get({
-    spreadsheetId: getSpreadsheetId(),
-    range: `'${sheetName}'!A:AZ`,
-  });
+  let res;
+  try {
+    res = await getSheets().spreadsheets.values.get({
+      spreadsheetId: getSpreadsheetId(),
+      range: `'${sheetName}'!A:AZ`,
+    });
+  } catch (err) {
+    // 탭이 존재하지 않을 때 Google Sheets API는 400 + "Unable to parse range" 반환
+    const msg = err.message || '';
+    if (err.code === 400 || msg.includes('Unable to parse range') || msg.includes('badRequest')) {
+      console.warn(`[Sheets] 탭 없음 또는 읽기 실패 — '${sheetName}': ${msg}`);
+      return [];
+    }
+    throw err;
+  }
   const rows = res.data.values || [];
   if (rows.length === 0) return [];
 

@@ -5,6 +5,85 @@ import { useSheet } from '../context/SheetContext';
 import { INVENTORY_MODES } from '../constants/inventoryModes';
 import DriveSetupSection from '../components/DriveSetupSection';
 
+const INVENTORY_TYPE_KEY = 'talkment_inventory_type';
+
+const INVENTORY_TYPES = [
+  {
+    id: 'serial',
+    icon: '🔢',
+    label: '시리얼 번호 관리',
+    desc: '노트북, 장비 등 개별 자산을 시리얼 번호로 추적합니다.',
+  },
+  {
+    id: 'consumable',
+    icon: '📦',
+    label: '소모품 수량 관리',
+    desc: '소모품, 비품 등의 재고 수량을 관리합니다.',
+  },
+  {
+    id: 'both',
+    icon: '🗂️',
+    label: '둘 다 사용',
+    desc: '시리얼 자산과 소모품을 함께 관리합니다.',
+  },
+];
+
+function InventoryTypeSelect({ onSelect, saving }) {
+  const [selected, setSelected] = useState(null);
+
+  const handleConfirm = () => {
+    if (selected) onSelect(selected);
+  };
+
+  return (
+    <div>
+      <h3 className="setup-section-title" style={{ marginBottom: 8 }}>물품 관리 유형 선택</h3>
+      <p className="data-card-meta" style={{ marginBottom: 16 }}>
+        이 시트에서 어떤 방식으로 재고를 관리하시나요?
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {INVENTORY_TYPES.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setSelected(t.id)}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              padding: '14px 16px',
+              border: `2px solid ${selected === t.id ? 'var(--color-primary, #2563eb)' : '#e2e8f0'}`,
+              borderRadius: 12,
+              background: selected === t.id ? 'var(--color-primary-light, #eff6ff)' : '#fff',
+              cursor: 'pointer',
+              textAlign: 'left',
+              width: '100%',
+              transition: 'border-color 0.15s, background 0.15s',
+            }}
+          >
+            <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>{t.icon}</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#1e293b' }}>{t.label}</div>
+              <div style={{ fontSize: '0.8125rem', color: '#64748b', marginTop: 2 }}>{t.desc}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        className="btn btn-primary"
+        style={{ marginTop: 20, width: '100%' }}
+        disabled={!selected || saving}
+        onClick={handleConfirm}
+      >
+        {saving ? '저장 중...' : '확인 및 시작'}
+      </button>
+    </div>
+  );
+}
+
 function SheetRegisterForm({ existingSheet, onRegistered }) {
   const { registerSheetForMode, deleteSheetForMode } = useSheet();
   const [url, setUrl] = useState('');
@@ -148,6 +227,46 @@ const SETUP_TABS = [
 export default function SheetManagerScreen({ onComplete, mode = 'initial' }) {
   const { hasSheets, internalSheet } = useSheet();
   const [activeTab, setActiveTab] = useState('sheet');
+  const [step, setStep] = useState('form'); // 'form' | 'type-select'
+  const [savingType, setSavingType] = useState(false);
+
+  const handleRegistered = () => {
+    if (mode === 'initial') {
+      setStep('type-select');
+    }
+  };
+
+  const handleTypeSelect = async (inventoryType) => {
+    setSavingType(true);
+    try {
+      localStorage.setItem(INVENTORY_TYPE_KEY, inventoryType);
+      try {
+        const status = await api.getOnboardingStatus();
+        if (status.activeWorkspaceId) {
+          await api.updateInventoryType(status.activeWorkspaceId, inventoryType);
+        }
+      } catch {
+        // 워크스페이스 없으면 localStorage만 사용
+      }
+    } finally {
+      setSavingType(false);
+    }
+    onComplete?.();
+  };
+
+  if (step === 'type-select') {
+    return (
+      <div className="setup-screen">
+        <div className="setup-card setup-card-wide">
+          <div className="setup-app-brand">
+            <h1 className="setup-app-name">Talkment</h1>
+            <p className="setup-app-tagline">말로하는 관리 프로그램</p>
+          </div>
+          <InventoryTypeSelect onSelect={handleTypeSelect} saving={savingType} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="setup-screen">
@@ -176,7 +295,7 @@ export default function SheetManagerScreen({ onComplete, mode = 'initial' }) {
 
         <div className="setup-tab-panel">
           {activeTab === 'sheet' && (
-            <SheetRegisterForm existingSheet={internalSheet} />
+            <SheetRegisterForm existingSheet={internalSheet} onRegistered={handleRegistered} />
           )}
           {activeTab === 'signature' && <DriveSetupSection embedded />}
         </div>
@@ -187,9 +306,9 @@ export default function SheetManagerScreen({ onComplete, mode = 'initial' }) {
           </button>
         )}
 
-        {mode === 'initial' && hasSheets && (
-          <button type="button" className="btn btn-primary" onClick={onComplete} style={{ marginTop: 16 }}>
-            앱 시작하기
+        {mode === 'initial' && hasSheets && step === 'form' && (
+          <button type="button" className="btn btn-primary" onClick={() => setStep('type-select')} style={{ marginTop: 16 }}>
+            다음 — 관리 유형 선택
           </button>
         )}
 

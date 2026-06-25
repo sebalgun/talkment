@@ -12,6 +12,7 @@ import {
   listWorkspaces,
   getWorkspace,
   deleteWorkspace,
+  updateWorkspaceInventoryType,
 } from '../services/onboardingStore.js';
 
 const router = Router();
@@ -199,6 +200,22 @@ router.patch('/workspaces/:id/tabs', (req, res) => {
     const { tabs } = req.body ?? {};
     if (!tabs) return res.status(400).json({ error: 'tabs 설정이 필요합니다.' });
     const workspace = saveWorkspaceTabs(req.params.id, tabs);
+    res.json(workspace);
+  } catch (e) {
+    const status = e.message.includes('찾을 수 없습니다') ? 404 : 400;
+    res.status(status).json({ error: e.message });
+  }
+});
+
+/**
+ * PATCH /api/onboarding/workspaces/:id/inventory-type
+ * 재고 관리 유형 설정 — serial | consumable | both
+ */
+router.patch('/workspaces/:id/inventory-type', (req, res) => {
+  try {
+    const { inventoryType } = req.body ?? {};
+    if (!inventoryType) return res.status(400).json({ error: 'inventoryType이 필요합니다.' });
+    const workspace = updateWorkspaceInventoryType(req.params.id, inventoryType);
     res.json(workspace);
   } catch (e) {
     const status = e.message.includes('찾을 수 없습니다') ? 404 : 400;

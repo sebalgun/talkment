@@ -323,6 +323,25 @@ export function getActiveWorkspace() {
 }
 
 /**
+ * 재고 관리 유형 저장 (시리얼 / 소모품 / 둘 다)
+ * @param {string} workspaceId
+ * @param {'serial' | 'consumable' | 'both'} inventoryType
+ */
+export function updateWorkspaceInventoryType(workspaceId, inventoryType) {
+  const VALID = ['serial', 'consumable', 'both'];
+  if (!VALID.includes(inventoryType)) {
+    throw new Error(`inventoryType은 ${VALID.join(', ')} 중 하나여야 합니다.`);
+  }
+  const state = readRaw();
+  const idx = state.workspaces.findIndex((w) => w.id === workspaceId);
+  if (idx === -1) throw new Error(`작업 공간을 찾을 수 없습니다: ${workspaceId}`);
+  state.workspaces[idx].inventoryType = inventoryType;
+  state.workspaces[idx].updatedAt = new Date().toISOString();
+  writeRaw(state);
+  return state.workspaces[idx];
+}
+
+/**
  * 작업 공간 삭제
  * - 마지막 workspace 삭제 시 온보딩 상태 초기화
  * - active였던 경우 다음 workspace가 active로 승격

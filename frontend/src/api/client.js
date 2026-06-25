@@ -186,6 +186,12 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ tabs }),
     }),
+
+  updateInventoryType: (workspaceId, inventoryType) =>
+    authFetch(`${BASE}/onboarding/workspaces/${workspaceId}/inventory-type`, {
+      method: 'PATCH',
+      body: JSON.stringify({ inventoryType }),
+    }),
 };
 
 export { parseSpreadsheetId };
