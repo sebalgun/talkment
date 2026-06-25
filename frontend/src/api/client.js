@@ -147,6 +147,8 @@ export const api = {
 
   getDashboardStats: () => request('/dashboard/stats'),
 
+  exportConfig: () => authFetch(`${BASE}/app-config/export`),
+
   // ── 온보딩 API (스프레드시트 ID 헤더 불필요) ──────────────
 
   getOnboardingStatus: () => authFetch(`${BASE}/onboarding/status`),

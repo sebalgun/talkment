@@ -26,14 +26,30 @@ function writeRaw(data) {
   replitDb.set('app_config', data); // fire and forget
 }
 
-/** Cloud Run 콜드스타트 시 Replit DB에서 파일 복원 */
+/** Cloud Run 콜드스타트 시 Replit DB → 환경변수 순으로 설정 복원 */
 export async function restoreFromDb() {
   if (existsSync(CONFIG_PATH)) return;
-  const data = await replitDb.get('app_config');
-  if (data) {
+
+  // 1) Replit DB
+  const dbData = await replitDb.get('app_config');
+  if (dbData) {
     ensureDir();
-    writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    writeFileSync(CONFIG_PATH, JSON.stringify(dbData, null, 2), 'utf-8');
     console.log('[AppConfig] Replit DB에서 설정 복원됨');
+    return;
+  }
+
+  // 2) 환경변수 폴백 (TALKMENT_APP_CONFIG=base64JSON)
+  const envVal = process.env.TALKMENT_APP_CONFIG;
+  if (envVal) {
+    try {
+      const parsed = JSON.parse(Buffer.from(envVal, 'base64').toString('utf-8'));
+      ensureDir();
+      writeFileSync(CONFIG_PATH, JSON.stringify(parsed, null, 2), 'utf-8');
+      console.log('[AppConfig] 환경변수 TALKMENT_APP_CONFIG에서 설정 복원됨');
+    } catch (e) {
+      console.warn('[AppConfig] TALKMENT_APP_CONFIG 파싱 실패:', e.message);
+    }
   }
 }
 

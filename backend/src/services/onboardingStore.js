@@ -80,14 +80,30 @@ function writeRaw(data) {
   replitDb.set('workspaces', data); // fire and forget
 }
 
-/** Cloud Run 콜드스타트 시 Replit DB에서 파일 복원 */
+/** Cloud Run 콜드스타트 시 Replit DB → 환경변수 순으로 설정 복원 */
 export async function restoreFromDb() {
   if (existsSync(CONFIG_PATH)) return;
-  const data = await replitDb.get('workspaces');
-  if (data) {
+
+  // 1) Replit DB
+  const dbData = await replitDb.get('workspaces');
+  if (dbData) {
     ensureDir();
-    writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    writeFileSync(CONFIG_PATH, JSON.stringify(dbData, null, 2), 'utf-8');
     console.log('[Onboarding] Replit DB에서 설정 복원됨');
+    return;
+  }
+
+  // 2) 환경변수 폴백 (TALKMENT_WORKSPACES=base64JSON)
+  const envVal = process.env.TALKMENT_WORKSPACES;
+  if (envVal) {
+    try {
+      const parsed = JSON.parse(Buffer.from(envVal, 'base64').toString('utf-8'));
+      ensureDir();
+      writeFileSync(CONFIG_PATH, JSON.stringify(parsed, null, 2), 'utf-8');
+      console.log('[Onboarding] 환경변수 TALKMENT_WORKSPACES에서 설정 복원됨');
+    } catch (e) {
+      console.warn('[Onboarding] TALKMENT_WORKSPACES 파싱 실패:', e.message);
+    }
   }
 }
 
