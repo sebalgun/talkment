@@ -153,6 +153,8 @@ export const api = {
 
   getOnboardingStatus: () => authFetch(`${BASE}/onboarding/status`),
 
+  listWorkspaces: () => authFetch(`${BASE}/onboarding/workspaces`),
+
   createWorkspace: ({ name, operationType }) =>
     authFetch(`${BASE}/onboarding/workspace`, {
       method: 'POST',
@@ -192,6 +194,14 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ inventoryType }),
     }),
+
+  activateWorkspace: (workspaceId) =>
+    authFetch(`${BASE}/onboarding/workspaces/${workspaceId}/activate`, {
+      method: 'PATCH',
+    }),
+
+  getWorkspaceCardStats: (workspaceId) =>
+    authFetch(`${BASE}/onboarding/workspaces/${workspaceId}/card-stats`),
 };
 
 export { parseSpreadsheetId };

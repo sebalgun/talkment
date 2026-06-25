@@ -13,7 +13,10 @@ import {
   getWorkspace,
   deleteWorkspace,
   updateWorkspaceInventoryType,
+  activateWorkspace,
 } from '../services/onboardingStore.js';
+import { fetchSheetRows } from '../services/googleSheets.js';
+import { saveAppConfig } from '../services/appConfigStore.js';
 
 const router = Router();
 
@@ -204,6 +207,91 @@ router.patch('/workspaces/:id/tabs', (req, res) => {
   } catch (e) {
     const status = e.message.includes('찾을 수 없습니다') ? 404 : 400;
     res.status(status).json({ error: e.message });
+  }
+});
+
+/**
+ * PATCH /api/onboarding/workspaces/:id/activate
+ * 워크스페이스 활성화 — activeWorkspaceId 전환 + app-config 동기화
+ */
+router.patch('/workspaces/:id/activate', (req, res) => {
+  try {
+    const workspace = activateWorkspace(req.params.id);
+    // app-config.json 동기화 — spreadsheetMiddleware가 이 값을 사용
+    if (workspace?.sheets?.main?.spreadsheetId) {
+      saveAppConfig({
+        sheet: {
+          spreadsheetId: workspace.sheets.main.spreadsheetId,
+          url: workspace.sheets.main.url,
+          title: workspace.sheets.main.title,
+          alias: workspace.name,
+        },
+      });
+    }
+    res.json(workspace);
+  } catch (e) {
+    const status = e.message.includes('찾을 수 없습니다') ? 404 : 400;
+    res.status(status).json({ error: e.message });
+  }
+});
+
+/**
+ * GET /api/onboarding/workspaces/:id/card-stats
+ * 프로젝트 카드용 간략 통계 — activeWorkspaceId 변경 없이 조회
+ */
+router.get('/workspaces/:id/card-stats', async (req, res, next) => {
+  try {
+    const workspace = getWorkspace(req.params.id);
+    if (!workspace) return res.status(404).json({ error: '작업 공간을 찾을 수 없습니다.' });
+
+    const spreadsheetId = workspace.sheets?.main?.spreadsheetId;
+    if (!spreadsheetId) return res.json({ itemCount: 0, unreturned: 0, lowStock: 0 });
+
+    // 새 3-탭 구조([물품관리]) 우선, 없으면 기존 탭명 폴백
+    const inventoryType = workspace.inventoryType || 'both';
+    const tabs = workspace.tabs || {};
+
+    const masterTabName = tabs.serialAssets?.tabName || '물품관리';
+    const logTabName    = tabs.serialLog?.tabName    || '반출이력';
+    const consumeTab    = tabs.consumableMaster?.tabName || '물품관리';
+
+    const [masterRows, logRows] = await Promise.all([
+      fetchSheetRows(masterTabName, spreadsheetId),
+      fetchSheetRows(logTabName, spreadsheetId),
+    ]);
+
+    // 구 구조 폴백: 물품관리 탭이 비어 있으면 시리얼/일반 따로 읽기
+    let items = masterRows;
+    if (items.length === 0 && inventoryType !== 'consumable') {
+      items = await fetchSheetRows('시리얼 물품 관리', spreadsheetId);
+    }
+    if (items.length === 0 && inventoryType !== 'serial') {
+      const consumableItems = await fetchSheetRows('일반 물품 관리', spreadsheetId);
+      items = [...items, ...consumableItems];
+    }
+
+    // 로그 폴백
+    let log = logRows;
+    if (log.length === 0) {
+      log = await fetchSheetRows('시리얼 입출고 내역', spreadsheetId);
+    }
+
+    // 재고 부족 판별 — 최소 재고 수량 컬럼 있는 경우
+    const today = new Date().toISOString().slice(0, 10);
+    const itemCount = items.length;
+    const unreturned = log.filter((r) => {
+      const returned = String(r['반납일'] || r['반납'] || '').trim();
+      return !returned;
+    }).length;
+    const lowStock = items.filter((r) => {
+      const min = parseInt(r['최소 재고 수량'] || r['최소재고'] || '', 10);
+      const cur = parseInt(r['재고 수량'] || r['현재 잔여갯수'] || r['수량'] || '', 10);
+      return !isNaN(min) && !isNaN(cur) && cur < min;
+    }).length;
+
+    res.json({ itemCount, unreturned, lowStock });
+  } catch (e) {
+    next(e);
   }
 });
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AppProvider, useApp, SCREENS } from './context/AppContext';
-import { SheetProvider, useSheet, isSheetConfigured } from './context/SheetContext';
+import { SheetProvider, useSheet } from './context/SheetContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import DashboardScreen from './screens/DashboardScreen';
 import FormScreen from './screens/FormScreen';
@@ -10,7 +10,7 @@ import SummaryDetailScreen from './screens/SummaryDetailScreen';
 import RowDetailScreen from './screens/RowDetailScreen';
 import HistoryScreen from './screens/HistoryScreen';
 import SettingsScreen from './screens/SettingsScreen';
-import SheetManagerScreen from './screens/SheetManagerScreen';
+import WorkspaceSelectScreen from './screens/WorkspaceSelectScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import SignatureModal from './components/SignatureModal';
@@ -43,7 +43,8 @@ function SheetLink({ onManage }) {
   );
 }
 
-function AppRouter({ onOpenSheetManager }) {
+// ── 대시보드 쉘 (워크스페이스 선택 후) ──────────────────────────
+function AppRouter({ onBack, onOpenSheetManager }) {
   const { state, dispatch } = useApp();
   const { activeSheet, version } = useSheet();
   const { user } = useAuth();
@@ -56,7 +57,7 @@ function AppRouter({ onOpenSheetManager }) {
 
   const badgeLabel = mainTab === 'history' ? '반출이력'
     : mainTab === 'settings' ? '설정'
-    : state.screen === SCREENS.DASHBOARD ? '대시보드'
+    : state.screen === SCREENS.DASHBOARD ? '재고현황'
     : state.screen === SCREENS.FORM ? '출고 검증'
     : state.screen === SCREENS.RETURN_LIST ? '미반납 목록'
     : state.screen === SCREENS.SUMMARY_DETAIL ? '현황 상세'
@@ -67,27 +68,19 @@ function AppRouter({ onOpenSheetManager }) {
     <div className="app-shell">
       <header className="app-header">
         <div className="header-left">
+          <button className="header-back-btn" onClick={onBack} title="프로젝트 목록">
+            ←
+          </button>
           <div className="header-brand">
-            <h1>Talkment</h1>
-            <span className="header-tagline">말로하는 관리 프로그램</span>
+            <h1>{activeSheet?.alias || 'Talkment'}</h1>
+            {mainTab === 'dashboard' && <SheetLink onManage={onOpenSheetManager} />}
           </div>
-          {mainTab === 'dashboard' && <SheetLink onManage={onOpenSheetManager} />}
         </div>
         <div className="header-right">
           <span className="screen-badge">{badgeLabel}</span>
           {mainTab === 'dashboard' && (
             <button className="header-icon-btn" onClick={handleRefresh} title="새로고침">
               ↻
-            </button>
-          )}
-          {user && (
-            <button
-              className="header-icon-btn"
-              onClick={() => setMainTab('settings')}
-              title={user.name || user.email}
-              style={{ fontSize: '16px' }}
-            >
-              👤
             </button>
           )}
         </div>
@@ -107,7 +100,10 @@ function AppRouter({ onOpenSheetManager }) {
         )}
         {mainTab === 'history' && <HistoryScreen />}
         {mainTab === 'settings' && (
-          <SettingsScreen onOpenSheetManager={onOpenSheetManager} />
+          <SettingsScreen
+            onOpenSheetManager={onOpenSheetManager}
+            onBackToProjects={onBack}
+          />
         )}
       </main>
 
@@ -118,43 +114,36 @@ function AppRouter({ onOpenSheetManager }) {
   );
 }
 
+// ── 앱 콘텐츠 — 진입 플로우 관리 ─────────────────────────────────
 function AppContent() {
-  const [showManager, setShowManager] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
-  const { hasSheets, activeSheet, bootstrapped, registerSheetForMode } = useSheet();
   const { isLoggedIn, checked: authChecked } = useAuth();
+  const { registerSheetForMode, bootstrapped } = useSheet();
+
+  // 'workspace-select' | 'add-project' | 'dashboard'
+  const [view, setView] = useState('workspace-select');
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(null);
+  const [showSheetManager, setShowSheetManager] = useState(false);
   const defaultTab = getSheetTabsForMode()[0]?.id || 'assets';
 
+  // 로그아웃 시 초기화
   useEffect(() => {
     if (!isLoggedIn) {
-      setShowOnboarding(false);
-      setShowManager(false);
-      setOnboardingChecked(false);
+      setView('workspace-select');
+      setSelectedWorkspaceId(null);
     }
   }, [isLoggedIn]);
 
-  useEffect(() => {
-    // 로그인 + 시트 컨텍스트 준비 후 온보딩 상태 확인
-    if (!authChecked || !isLoggedIn || !bootstrapped) return;
-
-    if (!isSheetConfigured()) {
-      api.getOnboardingStatus()
-        .then(({ isFirstRun }) => {
-          setShowOnboarding(isFirstRun);
-          setShowManager(!isFirstRun);
-          setOnboardingChecked(true);
-        })
-        .catch(() => {
-          setShowManager(true);
-          setOnboardingChecked(true);
-        });
-    } else {
-      setShowOnboarding(false);
-      setShowManager(false);
-      setOnboardingChecked(true);
-    }
-  }, [authChecked, isLoggedIn, bootstrapped, hasSheets]);
+  const handleWorkspaceSelect = async (workspaceId) => {
+    setSelectedWorkspaceId(workspaceId);
+    // SheetContext 동기화 — 서버에서 갱신된 app-config 읽기
+    try {
+      const cfg = await api.getAppConfig();
+      if (cfg.sheet?.spreadsheetId) {
+        await registerSheetForMode(null, cfg.sheet);
+      }
+    } catch { /* SheetContext refresh가 처리 */ }
+    setView('dashboard');
+  };
 
   const handleOnboardingComplete = async () => {
     try {
@@ -162,36 +151,43 @@ function AppContent() {
       if (cfg.sheet?.spreadsheetId) {
         await registerSheetForMode(null, cfg.sheet);
       }
-    } catch { /* SheetContext refresh가 처리 */ }
-    setShowOnboarding(false);
+    } catch { /* ignore */ }
+    setView('workspace-select');
   };
 
-  // 인증 확인 중
+  // ── 로딩 / 미로그인 ──
   if (!authChecked) return <SplashLoader text="인증 확인 중..." />;
-
-  // 미로그인
   if (!isLoggedIn) return <LoginScreen />;
+  if (!bootstrapped) return <SplashLoader text="설정 불러오는 중..." />;
 
-  // 앱 설정 로딩 중
-  if (!bootstrapped || !onboardingChecked) return <SplashLoader text="설정 불러오는 중..." />;
-
-  if (showOnboarding) {
-    return <OnboardingScreen onComplete={handleOnboardingComplete} />;
-  }
-
-  if (!hasSheets || showManager) {
+  // ── 새 프로젝트 온보딩 ──
+  if (view === 'add-project') {
     return (
-      <SheetManagerScreen
-        mode={hasSheets ? 'manage' : 'initial'}
-        onComplete={() => setShowManager(false)}
+      <OnboardingScreen
+        onComplete={handleOnboardingComplete}
+        onCancel={() => setView('workspace-select')}
       />
     );
   }
 
+  // ── 프로젝트 대시보드 ──
+  if (view === 'dashboard' && selectedWorkspaceId) {
+    return (
+      <AppProvider key={selectedWorkspaceId} initialSheetTab={defaultTab}>
+        <AppRouter
+          onBack={() => setView('workspace-select')}
+          onOpenSheetManager={() => setShowSheetManager(true)}
+        />
+      </AppProvider>
+    );
+  }
+
+  // ── 워크스페이스 선택 (기본 첫 화면) ──
   return (
-    <AppProvider key={activeSheet?.id} initialSheetTab={defaultTab}>
-      <AppRouter onOpenSheetManager={() => setShowManager(true)} />
-    </AppProvider>
+    <WorkspaceSelectScreen
+      onSelect={handleWorkspaceSelect}
+      onAddNew={() => setView('add-project')}
+    />
   );
 }
 

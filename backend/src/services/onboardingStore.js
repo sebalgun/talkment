@@ -323,6 +323,19 @@ export function getActiveWorkspace() {
 }
 
 /**
+ * 워크스페이스 활성화 — activeWorkspaceId + app-config.json 동기화
+ */
+export function activateWorkspace(workspaceId) {
+  const state = readRaw();
+  const workspace = state.workspaces.find((w) => w.id === workspaceId);
+  if (!workspace) throw new Error(`작업 공간을 찾을 수 없습니다: ${workspaceId}`);
+
+  state.activeWorkspaceId = workspaceId;
+  writeRaw(state);
+  return workspace;
+}
+
+/**
  * 재고 관리 유형 저장 (시리얼 / 소모품 / 둘 다)
  * @param {string} workspaceId
  * @param {'serial' | 'consumable' | 'both'} inventoryType

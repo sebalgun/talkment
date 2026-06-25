@@ -352,7 +352,7 @@ function TabMappingStep({ workspace, spreadsheetId, availableTabs, onComplete, o
 
 // ─── 메인 온보딩 스크린 ─────────────────────────────────────
 
-export default function OnboardingScreen({ onComplete }) {
+export default function OnboardingScreen({ onComplete, onCancel }) {
   const [step, setStep] = useState(STEP.WORKSPACE);
   const [workspace, setWorkspace] = useState(null);
   const [sheetInfo, setSheetInfo] = useState(null); // { spreadsheetId, tabs }
@@ -366,7 +366,20 @@ export default function OnboardingScreen({ onComplete }) {
   return (
     <div className="setup-screen">
       <div className="setup-card setup-card-wide">
-        <div className="setup-app-brand">
+        <div className="setup-app-brand" style={{ position: 'relative' }}>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                position: 'absolute', top: 0, right: 0,
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--muted)', fontSize: '0.875rem', padding: '4px 8px',
+              }}
+            >
+              ✕ 취소
+            </button>
+          )}
           <h1 className="setup-app-name">Talkment</h1>
           <p className="setup-app-tagline">말로하는 관리 프로그램</p>
         </div>

@@ -1830,3 +1830,265 @@ body {
   font-size: 0.8125rem;
   color: var(--muted);
 }
+
+/* ── Workspace Select Screen ─────────────────────────────── */
+.ws-select-screen {
+  min-height: 100dvh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 32px;
+}
+
+.ws-select-header {
+  background: var(--primary);
+  color: white;
+  padding: 28px 20px 24px;
+  text-align: center;
+}
+
+.ws-select-app-name {
+  font-size: 1.75rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.ws-select-tagline {
+  font-size: 0.8125rem;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+
+.ws-select-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 20px 20px 8px;
+  letter-spacing: 0.01em;
+}
+
+.ws-select-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+/* 카드 목록 */
+.ws-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 16px 16px;
+}
+
+/* 빈 상태 */
+.ws-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--muted);
+}
+
+.ws-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+.ws-empty-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.ws-empty-hint {
+  font-size: 0.875rem;
+}
+
+/* 개별 카드 */
+.ws-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 16px 14px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  position: relative;
+}
+
+.ws-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
+}
+
+.ws-card:active {
+  transform: scale(0.985);
+}
+
+.ws-card-active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.ws-card-active-dot {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.ws-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.ws-card-name {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.ws-card-type-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ws-card-no-sheet {
+  font-size: 0.8125rem;
+  color: #b45309;
+  background: #fef3c7;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+/* 카드 하단 통계 */
+.ws-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.ws-card-stats-loading {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  justify-content: center;
+}
+
+.ws-card-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  flex: 1;
+}
+
+.ws-card-stat-num {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+}
+
+.ws-card-stat-lbl {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.ws-card-stat-warn .ws-card-stat-num { color: #d97706; }
+.ws-card-stat-danger .ws-card-stat-num { color: var(--danger); }
+
+.ws-card-stat-sep {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.ws-card-activating {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: var(--primary);
+  font-weight: 600;
+  z-index: 2;
+}
+
+/* 새 프로젝트 추가 버튼 */
+.ws-add-section {
+  padding: 8px 16px;
+  margin-top: auto;
+}
+
+.ws-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.ws-add-btn:hover {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.ws-add-icon {
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+/* ── 헤더 뒤로가기 버튼 ─────────────────────────────────── */
+.header-back-btn {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  font-size: 1.125rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 8px;
+  transition: background 0.15s;
+}
+
+.header-back-btn:hover {
+  background: rgba(255,255,255,0.3);
+}

@@ -37,11 +37,11 @@ function getSheets() {
 }
 
 /** 캐시 없이 항상 최신 시트 데이터를 페치 — 탭이 없으면 빈 배열 반환 */
-export async function fetchSheetRows(sheetName) {
+export async function fetchSheetRows(sheetName, overrideSpreadsheetId) {
   let res;
   try {
     res = await getSheets().spreadsheets.values.get({
-      spreadsheetId: getSpreadsheetId(),
+      spreadsheetId: overrideSpreadsheetId || getSpreadsheetId(),
       range: `'${sheetName}'!A:AZ`,
     });
   } catch (err) {
