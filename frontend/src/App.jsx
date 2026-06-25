@@ -112,6 +112,14 @@ function AppContent() {
   const defaultTab = getSheetTabsForMode()[0]?.id || 'assets';
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setShowOnboarding(false);
+      setShowManager(false);
+      setOnboardingChecked(false);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
     // 로그인 + 시트 컨텍스트 준비 후 온보딩 상태 확인
     if (!authChecked || !isLoggedIn || !bootstrapped) return;
 

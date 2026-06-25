@@ -42,6 +42,12 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  useEffect(() => {
+    const handleAuthError = () => logout();
+    window.addEventListener('talkment_auth_error', handleAuthError);
+    return () => window.removeEventListener('talkment_auth_error', handleAuthError);
+  }, [logout]);
+
   return (
     <AuthContext.Provider
       value={{ user, token, isLoggedIn: !!token && !!user, checked, login, logout }}

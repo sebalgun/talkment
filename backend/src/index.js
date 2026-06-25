@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
 import path from 'path';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { config } from './config/env.js';
@@ -25,6 +25,7 @@ import onboardingRouter from './routes/onboarding.js';
 import dashboardRouter from './routes/dashboard.js';
 import authRouter from './routes/auth.js';
 import { authMiddleware } from './middleware/authMiddleware.js';
+import { SIGNATURES_DIR } from './services/localSignatureStorage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDist = path.resolve(__dirname, '../../frontend/dist');
@@ -35,6 +36,10 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // ── 공개 엔드포인트 (JWT 불필요) ──────────────────────────────────────────────
+
+// 서명 이미지 — 인증 없이 공개 (Google Sheets =IMAGE() 접근용)
+mkdirSync(SIGNATURES_DIR, { recursive: true });
+app.use('/signatures', express.static(SIGNATURES_DIR));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

@@ -25,8 +25,10 @@ export async function uploadSignaturePng(base64Data, filename, folderId) {
     );
   }
 
+  const mimeMatch = base64Data.match(/^data:([^;]+);base64,/);
+  const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
   const buffer = Buffer.from(
-    base64Data.replace(/^data:image\/png;base64,/, ''),
+    base64Data.replace(/^data:[^;]+;base64,/, ''),
     'base64'
   );
 
@@ -37,7 +39,7 @@ export async function uploadSignaturePng(base64Data, filename, folderId) {
       requestBody: {
         name: filename,
         parents: [folderId],
-        mimeType: 'image/png',
+        mimeType,
       },
       media: {
         mimeType: 'image/png',
@@ -51,7 +53,8 @@ export async function uploadSignaturePng(base64Data, filename, folderId) {
     const msg = err.message || '';
     if (msg.includes('storageQuotaExceeded') || msg.includes('storage quota')) {
       throw new Error(
-        '서명 이미지를 Drive에 저장할 수 없습니다. Google Drive에서 폴더를 만든 뒤 서비스 계정 이메일을 편집자로 공유하고, 폴더 ID를 GOOGLE_DRIVE_SIGNATURE_FOLDER_ID에 넣어 주세요.'
+        '서비스 계정은 일반 Drive 폴더에 파일을 저장할 수 없습니다(저장 용량 0). ' +
+        'Google Workspace 공유 드라이브(Shared Drive)에 폴더를 만들고 서비스 계정을 편집자로 추가한 뒤 폴더 ID를 등록해 주세요.'
       );
     }
     if (msg.includes('File not found') || err.code === 404) {

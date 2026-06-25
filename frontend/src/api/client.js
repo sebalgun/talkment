@@ -68,6 +68,9 @@ async function authFetch(url, options = {}) {
   if (!res.ok) {
     const err = new Error(data.error || `HTTP ${res.status}`);
     err.code = data.code;
+    if (res.status === 401) {
+      window.dispatchEvent(new CustomEvent('talkment_auth_error'));
+    }
     throw err;
   }
   return data;
