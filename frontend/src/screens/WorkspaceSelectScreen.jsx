@@ -185,7 +185,8 @@ export default function WorkspaceSelectScreen({ onSelect, onAddNew }) {
     try {
       await api.activateWorkspace(id);
       setActiveId(id);
-      onSelect(id);
+      const ws = workspaces.find((w) => w.id === id);
+      onSelect(id, ws);
     } catch (e) {
       setError(e.message || '작업 공간 전환에 실패했습니다.');
       setActivating(null);

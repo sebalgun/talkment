@@ -148,30 +148,58 @@ function AppContent() {
         if (!single.sheets?.main?.spreadsheetId) return; // 온보딩 미완료
 
         const targetId = status.activeWorkspaceId || single.id;
-        if (!status.activeWorkspaceId) {
-          await api.activateWorkspace(single.id);
-        }
+        // 항상 activate — 서버 재시작 후 app-config 유실 시 재동기화
+        await api.activateWorkspace(single.id).catch(() => {});
         setSelectedWorkspaceId(targetId);
         try {
           const cfg = await api.getAppConfig();
-          if (cfg.sheet?.spreadsheetId) {
-            await registerSheetForMode(null, cfg.sheet);
+          // cfg.sheet 없으면 워크스페이스 시트 정보로 폴백
+          const sheetPayload = cfg.sheet?.spreadsheetId
+            ? cfg.sheet
+            : single.sheets?.main?.spreadsheetId
+              ? { ...single.sheets.main, alias: single.name }
+              : null;
+          if (sheetPayload) {
+            await registerSheetForMode(null, sheetPayload);
           }
-        } catch { /* SheetContext가 처리 */ }
+        } catch {
+          // 최후 폴백: 워크스페이스 시트 정보로 직접 등록
+          if (single.sheets?.main?.spreadsheetId) {
+            try {
+              await registerSheetForMode(null, {
+                ...single.sheets.main,
+                alias: single.name,
+              });
+            } catch { /* ignore */ }
+          }
+        }
         setView('dashboard');
       })
       .catch(() => {});
   }, [isLoggedIn, bootstrapped, registerSheetForMode]);
 
-  const handleWorkspaceSelect = async (workspaceId) => {
+  const handleWorkspaceSelect = async (workspaceId, workspace) => {
     setSelectedWorkspaceId(workspaceId);
-    // SheetContext 동기화 — 서버에서 갱신된 app-config 읽기
     try {
       const cfg = await api.getAppConfig();
-      if (cfg.sheet?.spreadsheetId) {
-        await registerSheetForMode(null, cfg.sheet);
+      const sheetPayload = cfg.sheet?.spreadsheetId
+        ? cfg.sheet
+        : workspace?.sheets?.main?.spreadsheetId
+          ? { ...workspace.sheets.main, alias: workspace.name }
+          : null;
+      if (sheetPayload) {
+        await registerSheetForMode(null, sheetPayload);
       }
-    } catch { /* SheetContext refresh가 처리 */ }
+    } catch {
+      if (workspace?.sheets?.main?.spreadsheetId) {
+        try {
+          await registerSheetForMode(null, {
+            ...workspace.sheets.main,
+            alias: workspace.name,
+          });
+        } catch { /* ignore */ }
+      }
+    }
     setView('dashboard');
   };
 
