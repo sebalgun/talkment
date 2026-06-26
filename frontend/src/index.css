@@ -2448,7 +2448,8 @@ body {
   color: var(--muted);
 }
 
-.item-stat-warn .item-group-stat-num { color: var(--danger); }
+.item-stat-warn   .item-group-stat-num { color: var(--danger); }
+.item-stat-danger .item-group-stat-num { color: #dc2626; font-weight: 800; }
 
 .item-group-chevron {
   font-size: 0.8125rem;

@@ -20,7 +20,7 @@ function groupInventory(items) {
 }
 
 // ── 품목 그룹 카드 (아코디언) ──────────────────────────────────
-function ItemGroupCard({ group, onItemClick }) {
+function ItemGroupCard({ group, overdueCount, onItemClick }) {
   const [expanded, setExpanded] = useState(false);
 
   const isSerial = group.type === 'serial';
@@ -40,18 +40,20 @@ function ItemGroupCard({ group, onItemClick }) {
         <div className="item-group-stats">
           <div className="item-group-stat">
             <span className="item-group-stat-num">{total}</span>
-            <span className="item-group-stat-lbl">총 갯수</span>
+            <span className="item-group-stat-lbl">갯수</span>
           </div>
           {isSerial && (
-            <div className={`item-group-stat${checkedOut > 0 ? ' item-stat-warn' : ''}`}>
-              <span className="item-group-stat-num">{checkedOut}</span>
-              <span className="item-group-stat-lbl">반출</span>
-            </div>
+            <>
+              <div className={`item-group-stat${checkedOut > 0 ? ' item-stat-warn' : ''}`}>
+                <span className="item-group-stat-num">{checkedOut}</span>
+                <span className="item-group-stat-lbl">반출</span>
+              </div>
+              <div className={`item-group-stat${overdueCount > 0 ? ' item-stat-danger' : ''}`}>
+                <span className="item-group-stat-num">{overdueCount}</span>
+                <span className="item-group-stat-lbl">연체</span>
+              </div>
+            </>
           )}
-          <div className="item-group-stat">
-            <span className="item-group-stat-num">0</span>
-            <span className="item-group-stat-lbl">연체</span>
-          </div>
         </div>
         <span className="item-group-chevron">{expanded ? '▾' : '▸'}</span>
       </button>
@@ -112,7 +114,7 @@ export default function DashboardScreen() {
   const { version } = useSheet();
 
   const [inventory, setInventory] = useState([]);
-  const [stats, setStats] = useState({ returns: { unreturned: 0, overdue: 0 } });
+  const [stats, setStats] = useState({ returns: { unreturned: 0, overdue: 0, overdueItems: [] } });
   const [statsError, setStatsError] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [returnQuery, setReturnQuery] = useState('');
@@ -144,11 +146,11 @@ export default function DashboardScreen() {
     dispatch({ type: 'GO_ROW_DETAIL', payload: { row: item, tab } });
   };
 
-  const handleUnreturnedClick = async () => {
-    if (stats.returns.unreturned === 0) return;
+  const handleCheckedOutClick = async () => {
+    if (checkedOutCount === 0) return;
     try {
       const items = await api.searchReturns('');
-      dispatch({ type: 'GO_RETURN_LIST', payload: { query: '전체 미반납', items, status: null } });
+      dispatch({ type: 'GO_RETURN_LIST', payload: { query: '전체 반출', items, status: null } });
     } catch (e) {
       dispatch({ type: 'SET_STATUS', payload: { type: 'error', msg: e.message } });
     }
@@ -162,13 +164,27 @@ export default function DashboardScreen() {
     setShowReturnInput(false);
   };
 
+  // ── 통계 계산 ─────────────────────────────────────────────
   const groups = groupInventory(inventory);
   const itemTypeCount = groups.length;
-  const totalQuantity = inventory.reduce((sum, item) => {
+
+  // 재고 기반 통계 (로그 탭 없어도 계산 가능)
+  const serialItems = inventory.filter((i) => i._type === 'serial');
+  const totalCount = inventory.reduce((sum, item) => {
     if (item._type === 'serial') return sum + 1;
     return sum + (parseInt(item._quantity) || 0);
   }, 0);
-  const { unreturned = 0, overdue = 0 } = stats.returns || {};
+  const checkedOutCount = serialItems.filter((i) => i._status !== 'available').length;
+
+  // 연체는 getDashboardStats 기반 (로그 탭 있을 때만 의미 있음)
+  const { overdue = 0 } = stats.returns || {};
+
+  // 아이템별 연체 수 (품목명 → 연체 건수)
+  const overdueByItem = (stats.returns?.overdueItems || []).reduce((map, oi) => {
+    const name = oi.itemName;
+    map[name] = (map[name] || 0) + 1;
+    return map;
+  }, {});
 
   return (
     <div className="screen screen-dashboard">
@@ -183,20 +199,20 @@ export default function DashboardScreen() {
       <div className="dash-stats">
         <div className="dash-stat-chip">
           <span className="dash-stat-num">{itemTypeCount}</span>
-          <span className="dash-stat-lbl">총 품목 종류</span>
+          <span className="dash-stat-lbl">품목종류</span>
         </div>
         <div className="dash-stat-sep" />
         <div className="dash-stat-chip">
-          <span className="dash-stat-num">{totalQuantity}</span>
-          <span className="dash-stat-lbl">총 갯수</span>
+          <span className="dash-stat-num">{totalCount}</span>
+          <span className="dash-stat-lbl">전체 갯수</span>
         </div>
         <div className="dash-stat-sep" />
         <button
-          className={`dash-stat-chip ${unreturned > 0 ? 'dash-stat-warn' : ''}`}
-          onClick={handleUnreturnedClick}
+          className={`dash-stat-chip ${checkedOutCount > 0 ? 'dash-stat-warn' : ''}`}
+          onClick={handleCheckedOutClick}
         >
-          <span className="dash-stat-num">{unreturned}</span>
-          <span className="dash-stat-lbl">반출</span>
+          <span className="dash-stat-num">{checkedOutCount}</span>
+          <span className="dash-stat-lbl">반출갯수</span>
         </button>
         <div className="dash-stat-sep" />
         <div className={`dash-stat-chip ${overdue > 0 ? 'dash-stat-danger' : ''}`}>
@@ -205,16 +221,9 @@ export default function DashboardScreen() {
         </div>
       </div>
 
-      {/* ── 통계 오류 안내 ── */}
-      {statsError && (
-        <div className="status-msg error" style={{ margin: '0 16px 8px', fontSize: '0.8rem' }}>
-          통계 조회 실패 — 반출·연체 수치를 불러오지 못했습니다
-        </div>
-      )}
-
       {/* ── 연체 배너 ── */}
       {overdue > 0 && (
-        <button className="dash-overdue-banner" onClick={handleUnreturnedClick}>
+        <button className="dash-overdue-banner" onClick={handleCheckedOutClick}>
           ⚠️ 반납 연체 {overdue}건 — 예정일 초과 항목이 있습니다
         </button>
       )}
@@ -238,6 +247,7 @@ export default function DashboardScreen() {
               <ItemGroupCard
                 key={item._rowIndex}
                 group={{ itemName: group.itemName, type: item._type, items: [item] }}
+                overdueCount={overdueByItem[group.itemName] || 0}
                 onItemClick={handleItemClick}
               />
             ))
@@ -245,6 +255,7 @@ export default function DashboardScreen() {
             <ItemGroupCard
               key={group.itemName}
               group={group}
+              overdueCount={overdueByItem[group.itemName] || 0}
               onItemClick={handleItemClick}
             />
           )
