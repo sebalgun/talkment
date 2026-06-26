@@ -212,6 +212,17 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ fieldOptions }),
     }),
+
+  renameWorkspace: (workspaceId, name) =>
+    authFetch(`${BASE}/onboarding/workspaces/${workspaceId}/name`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteWorkspace: (workspaceId) =>
+    authFetch(`${BASE}/onboarding/workspaces/${workspaceId}`, {
+      method: 'DELETE',
+    }),
 };
 
 export { parseSpreadsheetId };

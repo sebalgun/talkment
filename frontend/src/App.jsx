@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AppProvider, useApp, SCREENS } from './context/AppContext';
 import { SheetProvider, useSheet } from './context/SheetContext';
@@ -123,6 +123,7 @@ function AppContent() {
   const [view, setView] = useState('workspace-select');
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(null);
   const [showSheetManager, setShowSheetManager] = useState(false);
+  const autoChecked = useRef(false);
   const defaultTab = getSheetTabsForMode()[0]?.id || 'assets';
 
   // 로그아웃 시 초기화
@@ -130,8 +131,37 @@ function AppContent() {
     if (!isLoggedIn) {
       setView('workspace-select');
       setSelectedWorkspaceId(null);
+      autoChecked.current = false;
     }
   }, [isLoggedIn]);
+
+  // 워크스페이스 1개(시트 연결 완료)면 자동 대시보드 진입
+  useEffect(() => {
+    if (!isLoggedIn || !bootstrapped || autoChecked.current) return;
+    autoChecked.current = true;
+
+    Promise.all([api.listWorkspaces(), api.getOnboardingStatus()])
+      .then(async ([ws, status]) => {
+        const workspaces = ws.workspaces || [];
+        if (workspaces.length !== 1) return;
+        const single = workspaces[0];
+        if (!single.sheets?.main?.spreadsheetId) return; // 온보딩 미완료
+
+        const targetId = status.activeWorkspaceId || single.id;
+        if (!status.activeWorkspaceId) {
+          await api.activateWorkspace(single.id);
+        }
+        setSelectedWorkspaceId(targetId);
+        try {
+          const cfg = await api.getAppConfig();
+          if (cfg.sheet?.spreadsheetId) {
+            await registerSheetForMode(null, cfg.sheet);
+          }
+        } catch { /* SheetContext가 처리 */ }
+        setView('dashboard');
+      })
+      .catch(() => {});
+  }, [isLoggedIn, bootstrapped, registerSheetForMode]);
 
   const handleWorkspaceSelect = async (workspaceId) => {
     setSelectedWorkspaceId(workspaceId);

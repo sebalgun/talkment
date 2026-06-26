@@ -16,6 +16,7 @@ import {
   activateWorkspace,
   getActiveFieldOptions,
   updateWorkspaceFieldOptions,
+  renameWorkspace,
 } from '../services/onboardingStore.js';
 import { fetchSheetRows } from '../services/googleSheets.js';
 
@@ -335,6 +336,21 @@ router.patch('/workspaces/:id/field-options', (req, res) => {
   } catch (e) {
     const status = e.message.includes('찾을 수 없습니다') ? 404 : 400;
     res.status(status).json({ error: e.message });
+  }
+});
+
+/**
+ * PATCH /api/onboarding/workspaces/:id/name
+ * 작업 공간 이름 변경
+ */
+router.patch('/workspaces/:id/name', (req, res) => {
+  try {
+    const { name } = req.body ?? {};
+    const workspace = renameWorkspace(req.params.id, name);
+    res.json(workspace);
+  } catch (err) {
+    const status = err.message.includes('찾을 수 없습니다') ? 404 : 400;
+    res.status(status).json({ error: err.message });
   }
 });
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
 import { parseSpreadsheetId } from '../utils/sheetConfig';
 
-const STEP = { WORKSPACE: 1, SHEETS: 2, TABS: 3 };
+const STEP = { WORKSPACE: 1, SHEETS: 2, TABS: 3, FIELDS: 4 };
 
 // 탭 용도 정의
 const TAB_PURPOSES = [
@@ -50,6 +50,17 @@ const OPERATION_TYPES = [
   { value: 'external', label: '외부인 혼용',   desc: '고객·협력사 등 외부인이 물품을 대여하는 경우' },
 ];
 
+const INVENTORY_TYPES = [
+  { value: 'serial',     label: '시리얼 관리', desc: '노트북·장비 등 개별 자산 추적' },
+  { value: 'consumable', label: '소모품 관리', desc: '수량으로 소모성 물품 관리' },
+  { value: 'both',       label: '통합 관리',   desc: '시리얼 자산 + 소모품 모두 사용' },
+];
+
+const FIELD_TOGGLES = [
+  { key: 'requireSignature', label: '서명 요구',      desc: '출고·반납 완료 시 서명 패드 표시' },
+  { key: 'trackReturnDue',   label: '반납예정일 입력', desc: '출고 폼에 반납예정일 필드 추가' },
+];
+
 // ─── 진행 표시기 ────────────────────────────────────────────
 
 function StepProgress({ current, total }) {
@@ -70,6 +81,7 @@ function StepProgress({ current, total }) {
 function WorkspaceInfoStep({ onNext }) {
   const [name, setName] = useState('');
   const [operationType, setOperationType] = useState('internal');
+  const [inventoryType, setInventoryType] = useState('both');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -79,7 +91,8 @@ function WorkspaceInfoStep({ onNext }) {
     setLoading(true); setError(null);
     try {
       const workspace = await api.createWorkspace({ name: trimmed, operationType });
-      onNext(workspace);
+      await api.updateInventoryType(workspace.id, inventoryType);
+      onNext({ ...workspace, inventoryType });
     } catch (e) {
       setError(e.message || '저장에 실패했습니다.');
     } finally { setLoading(false); }
@@ -88,7 +101,7 @@ function WorkspaceInfoStep({ onNext }) {
   return (
     <div className="ob-step">
       <p className="setup-desc" style={{ textAlign: 'left' }}>
-        첫 번째 작업 공간을 만들어 보세요. 이름과 운영 유형은 나중에 변경할 수 있습니다.
+        첫 번째 작업 공간을 만들어 보세요. 설정은 나중에 변경할 수 있습니다.
       </p>
 
       <div className="form-group">
@@ -101,6 +114,24 @@ function WorkspaceInfoStep({ onNext }) {
           autoFocus
           onKeyDown={(e) => e.key === 'Enter' && handleNext()}
         />
+      </div>
+
+      <div className="form-group">
+        <label>관리 유형</label>
+        <div className="ob-type-options">
+          {INVENTORY_TYPES.map((opt) => (
+            <button key={opt.value} type="button"
+              className={`ob-type-btn ${inventoryType === opt.value ? 'active' : ''}`}
+              onClick={() => setInventoryType(opt.value)}
+            >
+              <span className="ob-type-radio">{inventoryType === opt.value ? '●' : '○'}</span>
+              <span className="ob-type-text">
+                <span className="ob-type-name">{opt.label}</span>
+                <span className="ob-type-desc">{opt.desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="form-group">
@@ -206,7 +237,7 @@ function ColumnMappingRow({ field, headers, value, onChange }) {
   );
 }
 
-function TabMappingStep({ workspace, spreadsheetId, availableTabs, onComplete, onBack }) {
+function TabMappingStep({ workspace, spreadsheetId, availableTabs, onNext, onBack }) {
   const isInternal = workspace.operationType === 'internal';
   const purposes = TAB_PURPOSES.filter((p) => !p.internalOnly || isInternal);
 
@@ -283,8 +314,7 @@ function TabMappingStep({ workspace, spreadsheetId, availableTabs, onComplete, o
         }
       }
       await api.saveWorkspaceTabs(workspace.id, tabs);
-      await api.completeOnboarding(workspace.id);
-      onComplete();
+      onNext();
     } catch (e) {
       setError(e.message || '저장에 실패했습니다.');
     } finally { setSaving(false); }
@@ -343,6 +373,69 @@ function TabMappingStep({ workspace, spreadsheetId, availableTabs, onComplete, o
         </button>
         <button type="button" className="btn btn-primary" onClick={handleComplete}
           disabled={saving || loading}>
+          {saving ? '저장 중...' : '다음 →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 4: 기능 스위치 설정 ────────────────────────────────
+
+function FieldOptionsStep({ workspace, onComplete, onBack }) {
+  const [options, setOptions] = useState({ requireSignature: true, trackReturnDue: true });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleToggle = (key) => {
+    setOptions((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleComplete = async () => {
+    setSaving(true); setError(null);
+    try {
+      await api.saveFieldOptions(workspace.id, options);
+      await api.completeOnboarding(workspace.id);
+      onComplete();
+    } catch (e) {
+      setError(e.message || '저장에 실패했습니다.');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="ob-step">
+      <p className="setup-desc" style={{ textAlign: 'left' }}>
+        사용할 기능을 선택하세요. 설정은 나중에 [설정] 탭에서 변경 가능합니다.
+      </p>
+
+      <div className="ob-field-options">
+        {FIELD_TOGGLES.map((toggle) => (
+          <div key={toggle.key} className="field-toggle-row">
+            <div className="field-toggle-info">
+              <span className="field-toggle-label">{toggle.label}</span>
+              <span className="field-toggle-desc">{toggle.desc}</span>
+            </div>
+            <button
+              type="button"
+              className={`toggle-switch ${options[toggle.key] ? 'on' : ''}`}
+              onClick={() => handleToggle(toggle.key)}
+              aria-checked={options[toggle.key]}
+            >
+              <span className="toggle-knob" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {error && <div className="status-msg error">{error}</div>}
+
+      <div style={{ marginTop: 16 }}>
+        <button type="button" className="btn btn-outline btn-sm" onClick={onBack}
+          disabled={saving} style={{ marginBottom: 10 }}>
+          ← 이전
+        </button>
+        <button type="button" className="btn btn-primary" onClick={handleComplete}
+          disabled={saving}>
           {saving ? '저장 중...' : '시작하기'}
         </button>
       </div>
@@ -361,6 +454,7 @@ export default function OnboardingScreen({ onComplete, onCancel }) {
     [STEP.WORKSPACE]: '작업 공간 설정',
     [STEP.SHEETS]:    '구글 시트 연결',
     [STEP.TABS]:      '탭 · 컬럼 설정',
+    [STEP.FIELDS]:    '기능 설정',
   };
 
   return (
@@ -384,8 +478,8 @@ export default function OnboardingScreen({ onComplete, onCancel }) {
           <p className="setup-app-tagline">말로하는 관리 프로그램</p>
         </div>
 
-        <StepProgress current={step} total={3} />
-        <p className="ob-step-label">{step} / 3단계</p>
+        <StepProgress current={step} total={4} />
+        <p className="ob-step-label">{step} / 4단계</p>
         <h2 className="setup-page-title">{STEP_TITLES[step]}</h2>
 
         {step === STEP.WORKSPACE && (
@@ -407,8 +501,16 @@ export default function OnboardingScreen({ onComplete, onCancel }) {
             workspace={workspace}
             spreadsheetId={sheetInfo.spreadsheetId}
             availableTabs={sheetInfo.tabs}
-            onComplete={onComplete}
+            onNext={() => setStep(STEP.FIELDS)}
             onBack={() => setStep(STEP.SHEETS)}
+          />
+        )}
+
+        {step === STEP.FIELDS && (
+          <FieldOptionsStep
+            workspace={workspace}
+            onComplete={onComplete}
+            onBack={() => setStep(STEP.TABS)}
           />
         )}
       </div>

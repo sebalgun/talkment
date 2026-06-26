@@ -383,6 +383,25 @@ export function updateWorkspaceFieldOptions(workspaceId, fieldOptions) {
 }
 
 /**
+ * 작업 공간 이름 변경
+ */
+export function renameWorkspace(workspaceId, name) {
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    throw new Error('작업 공간 이름을 입력해 주세요.');
+  }
+  if (name.trim().length > 50) {
+    throw new Error('작업 공간 이름은 50자 이내로 입력해 주세요.');
+  }
+  const state = readRaw();
+  const idx = state.workspaces.findIndex((w) => w.id === workspaceId);
+  if (idx === -1) throw new Error(`작업 공간을 찾을 수 없습니다: ${workspaceId}`);
+  state.workspaces[idx].name = name.trim();
+  state.workspaces[idx].updatedAt = new Date().toISOString();
+  writeRaw(state);
+  return state.workspaces[idx];
+}
+
+/**
  * 작업 공간 삭제
  * - 마지막 workspace 삭제 시 온보딩 상태 초기화
  * - active였던 경우 다음 workspace가 active로 승격

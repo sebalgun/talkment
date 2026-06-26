@@ -7,9 +7,12 @@ const TYPE_LABEL = {
   both:       { text: '통합 관리',   color: '#7c3aed' },
 };
 
-function WorkspaceCard({ workspace, onSelect, isActive }) {
+function WorkspaceCard({ workspace, onSelect, isActive, onRename, onDelete }) {
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editingName, setEditingName] = useState(null); // null = not editing
+  const [renaming, setRenaming] = useState(false);
 
   useEffect(() => {
     api.getWorkspaceCardStats(workspace.id)
@@ -21,11 +24,69 @@ function WorkspaceCard({ workspace, onSelect, isActive }) {
   const type = TYPE_LABEL[workspace.inventoryType] || TYPE_LABEL.both;
   const hasSheet = !!workspace.sheets?.main?.spreadsheetId;
 
+  const handleMenuClick = (e) => {
+    e.stopPropagation();
+    setMenuOpen((prev) => !prev);
+  };
+
+  const handleRenameClick = (e) => {
+    e.stopPropagation();
+    setEditingName(workspace.name);
+    setMenuOpen(false);
+  };
+
+  const handleDeleteClick = async (e) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    if (!window.confirm(`"${workspace.name}" 작업 공간을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    try {
+      await api.deleteWorkspace(workspace.id);
+      onDelete(workspace.id);
+    } catch (err) {
+      alert(err.message || '삭제에 실패했습니다.');
+    }
+  };
+
+  const handleRenameSubmit = async () => {
+    if (!editingName?.trim()) return;
+    setRenaming(true);
+    try {
+      await api.renameWorkspace(workspace.id, editingName.trim());
+      onRename(workspace.id, editingName.trim());
+      setEditingName(null);
+    } catch (err) {
+      alert(err.message || '이름 변경에 실패했습니다.');
+    } finally {
+      setRenaming(false);
+    }
+  };
+
   return (
-    <button
+    <div
       className={`ws-card ${isActive ? 'ws-card-active' : ''}`}
-      onClick={() => onSelect(workspace.id)}
+      onClick={editingName === null ? () => onSelect(workspace.id) : undefined}
+      role="button"
+      tabIndex={0}
+      onKeyDown={editingName === null ? (e) => e.key === 'Enter' && onSelect(workspace.id) : undefined}
     >
+      {/* 옵션 메뉴 버튼 */}
+      <button className="ws-card-menu-btn" onClick={handleMenuClick} title="옵션">
+        ···
+      </button>
+
+      {menuOpen && (
+        <>
+          <div
+            className="ws-card-menu-overlay"
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}
+          />
+          <div className="ws-card-menu" onClick={(e) => e.stopPropagation()}>
+            <button onClick={handleRenameClick}>이름 수정</button>
+            <button className="ws-card-menu-delete" onClick={handleDeleteClick}>삭제</button>
+          </div>
+        </>
+      )}
+
       <div className="ws-card-header">
         <div className="ws-card-name">{workspace.name}</div>
         <span className="ws-card-type-badge" style={{ background: type.color + '18', color: type.color }}>
@@ -66,8 +127,37 @@ function WorkspaceCard({ workspace, onSelect, isActive }) {
         </div>
       )}
 
-      {isActive && <div className="ws-card-active-dot" />}
-    </button>
+      {/* 인라인 이름 수정 */}
+      {editingName !== null && (
+        <div className="ws-card-rename-panel" onClick={(e) => e.stopPropagation()}>
+          <input
+            value={editingName}
+            onChange={(e) => setEditingName(e.target.value)}
+            autoFocus
+            maxLength={50}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRenameSubmit();
+              if (e.key === 'Escape') setEditingName(null);
+            }}
+          />
+          <div className="ws-card-rename-actions">
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleRenameSubmit}
+              disabled={renaming}
+            >
+              {renaming ? '...' : '저장'}
+            </button>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => setEditingName(null)}
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -101,6 +191,15 @@ export default function WorkspaceSelectScreen({ onSelect, onAddNew }) {
     }
   };
 
+  const handleRename = (id, newName) => {
+    setWorkspaces((prev) => prev.map((w) => w.id === id ? { ...w, name: newName } : w));
+  };
+
+  const handleDelete = (id) => {
+    setWorkspaces((prev) => prev.filter((w) => w.id !== id));
+    setActiveId((prev) => (prev === id ? null : prev));
+  };
+
   if (loading) {
     return (
       <div className="ws-select-screen">
@@ -111,7 +210,6 @@ export default function WorkspaceSelectScreen({ onSelect, onAddNew }) {
 
   return (
     <div className="ws-select-screen">
-      {/* 헤더 */}
       <div className="ws-select-header">
         <h1 className="ws-select-app-name">Talkment</h1>
         <p className="ws-select-tagline">말로하는 관리 프로그램</p>
@@ -121,7 +219,6 @@ export default function WorkspaceSelectScreen({ onSelect, onAddNew }) {
 
       {error && <div className="status-msg error" style={{ margin: '0 16px 12px' }}>{error}</div>}
 
-      {/* 워크스페이스 카드 목록 */}
       <div className="ws-card-list">
         {workspaces.length === 0 ? (
           <div className="ws-empty">
@@ -139,13 +236,14 @@ export default function WorkspaceSelectScreen({ onSelect, onAddNew }) {
                 workspace={ws}
                 isActive={ws.id === activeId}
                 onSelect={handleSelect}
+                onRename={handleRename}
+                onDelete={handleDelete}
               />
             </div>
           ))
         )}
       </div>
 
-      {/* 새 프로젝트 추가 버튼 */}
       <div className="ws-add-section">
         <button className="ws-add-btn" onClick={onAddNew}>
           <span className="ws-add-icon">＋</span>
