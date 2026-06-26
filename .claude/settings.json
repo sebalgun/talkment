@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build)",
+      "Bash(npm start)",
+      "Bash(npm run dev)",
+      "Bash(npm run preview)",
+      "Bash(npm --version)",
+      "Bash(node --version)",
+      "Bash(git diff * || git diff *)",
+      "Bash(git diff * 2>/dev/null || git diff *)",
+      "Bash(git diff * 2>/dev/null)",
+      "Bash(git log * --format=*)",
+      "Bash(git log * --oneline *)"
+    ]
+  }
+}

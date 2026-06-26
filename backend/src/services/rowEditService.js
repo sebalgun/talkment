@@ -8,6 +8,7 @@ const TAB_TO_SHEET = {
   serialLog: SHEET_NAMES.SERIAL_LOG,
   consumableMaster: SHEET_NAMES.CONSUMABLE_MASTER,
   consumableLog: SHEET_NAMES.CONSUMABLE_LOG,
+  inventoryMaster: '물품관리',
 };
 
 const HEADER_ALIASES = {

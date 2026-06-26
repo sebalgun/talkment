@@ -12,7 +12,10 @@ function groupInventory(items) {
     if (!map.has(name)) {
       map.set(name, { itemName: name, type: item._type, items: [] });
     }
-    map.get(name).items.push(item);
+    const group = map.get(name);
+    // 같은 이름에 다른 타입이 섞이면 'mixed' 처리
+    if (group.type !== item._type) group.type = 'mixed';
+    group.items.push(item);
   }
   return [...map.values()];
 }
@@ -50,8 +53,8 @@ function SerialGroupCard({ group, onItemClick }) {
   );
 }
 
-// ── 소모품 카드 ───────────────────────────────────────────────
-function ConsumableCard({ item, onItemClick }) {
+// ── 소모품 카드 (대시보드 전용, SheetItemCards.ConsumableCard와 별개) ──
+function InvConsumableCard({ item, onItemClick }) {
   return (
     <button className="inv-group-card inv-consumable-card" onClick={() => onItemClick(item)}>
       <div className="inv-consumable-row">
@@ -82,16 +85,18 @@ export default function DashboardScreen() {
 
   const [inventory, setInventory] = useState([]);
   const [stats, setStats] = useState({ returns: { unreturned: 0, overdue: 0 } });
+  const [statsError, setStatsError] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [returnQuery, setReturnQuery] = useState('');
   const [showReturnInput, setShowReturnInput] = useState(false);
 
   const loadData = useCallback(async () => {
     setFetching(true);
+    setStatsError(false);
     try {
       const [inv, st] = await Promise.all([
         api.getInventory(),
-        api.getDashboardStats().catch(() => null),
+        api.getDashboardStats().catch(() => { setStatsError(true); return null; }),
       ]);
       setInventory(inv);
       if (st) setStats(st);
@@ -109,7 +114,11 @@ export default function DashboardScreen() {
   };
 
   const handleItemClick = (item) => {
-    dispatch({ type: 'GO_ROW_DETAIL', payload: { row: item, tab: item._type === 'serial' ? 'assets' : 'consumableMaster' } });
+    // _source: 'inventoryMaster' → 통합 [물품관리] 탭, 'legacy' → 구분된 탭
+    const tab = item._source === 'inventoryMaster'
+      ? 'inventoryMaster'
+      : item._type === 'serial' ? 'assets' : 'consumableMaster';
+    dispatch({ type: 'GO_ROW_DETAIL', payload: { row: item, tab } });
   };
 
   const handleUnreturnedClick = async () => {
@@ -173,6 +182,13 @@ export default function DashboardScreen() {
         </div>
       </div>
 
+      {/* ── 통계 오류 안내 ── */}
+      {statsError && (
+        <div className="status-msg error" style={{ margin: '0 16px 8px', fontSize: '0.8rem' }}>
+          통계 조회 실패 — 미반납·연체 수치를 불러오지 못했습니다
+        </div>
+      )}
+
       {/* ── 연체 배너 ── */}
       {overdue > 0 && (
         <button className="dash-overdue-banner" onClick={handleUnreturnedClick}>
@@ -200,15 +216,31 @@ export default function DashboardScreen() {
               group={group}
               onItemClick={handleItemClick}
             />
-          ) : (
-            // 소모품은 아이템별로 개별 카드
+          ) : group.type === 'consumable' ? (
             group.items.map((item) => (
-              <ConsumableCard
+              <InvConsumableCard
                 key={item._rowIndex}
                 item={item}
                 onItemClick={handleItemClick}
               />
             ))
+          ) : (
+            // mixed: 같은 이름에 시리얼/소모품 혼재 — 각 아이템을 개별 타입으로 렌더링
+            group.items.map((item) =>
+              item._type === 'serial' ? (
+                <SerialGroupCard
+                  key={item._rowIndex}
+                  group={{ itemName: group.itemName, type: 'serial', items: [item] }}
+                  onItemClick={handleItemClick}
+                />
+              ) : (
+                <InvConsumableCard
+                  key={item._rowIndex}
+                  item={item}
+                  onItemClick={handleItemClick}
+                />
+              )
+            )
           )
         )}
       </div>

@@ -69,4 +69,18 @@ export const SHEET_TAB_CONFIG = {
   },
 };
 
+SHEET_TAB_CONFIG.inventoryMaster = {
+  label: '물품관리',
+  columns: [
+    { key: 'No', editable: false },
+    { key: '품목명', editable: true },
+    { key: '시리얼 넘버', editable: true },
+    { key: '현재 상태', editable: true },
+    { key: '재고 수량', editable: true, type: 'number' },
+    { key: '최소 재고 수량', editable: true, type: 'number' },
+    { key: '규격/상세', editable: true },
+    { key: '비고', editable: true },
+  ],
+};
+
 export const ALL_TAB_CONFIG = { ...SHEET_TAB_CONFIG };

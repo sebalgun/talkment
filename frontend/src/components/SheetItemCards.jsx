@@ -2,7 +2,7 @@ import { getReturnStatusLabel } from '../utils/returnStatus';
 
 export function isSerialOut(status) {
   const s = String(status || '').trim();
-  return s === '반출' || s === '대여중';
+  return s === '반출' || s === '대여중' || s === '반출완료';
 }
 
 export function AssetCard({ item, onOpen }) {

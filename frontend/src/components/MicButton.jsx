@@ -11,6 +11,12 @@ export default function MicButton() {
   const { listening, transcript, supported, start, stop, setTranscript } = useSpeechRecognition();
   const prevListening = useRef(false);
 
+  // 먼저 계산해서 useEffect 의존성으로 사용
+  const showMic =
+    activeMode === INVENTORY_MODES.INTERNAL &&
+    state.screen === SCREENS.DASHBOARD &&
+    !state.signatureModal;
+
   useEffect(() => {
     dispatch({ type: 'SET_TRANSCRIPT', payload: transcript });
   }, [transcript, dispatch]);
@@ -22,6 +28,17 @@ export default function MicButton() {
     prevListening.current = listening;
   }, [listening, transcript, dispatch]);
 
+  // 외부 트리거 — showMic이 false면 리스너는 등록하되 실행하지 않음
+  useEffect(() => {
+    const handler = () => {
+      if (!showMic || listening || state.loading) return;
+      setTranscript('');
+      start();
+    };
+    window.addEventListener('talkment_trigger_mic', handler);
+    return () => window.removeEventListener('talkment_trigger_mic', handler);
+  }, [showMic, listening, state.loading, start, setTranscript]);
+
   const toggleMic = () => {
     if (listening) stop();
     else {
@@ -30,19 +47,6 @@ export default function MicButton() {
     }
   };
 
-  // 대시보드 상단 버튼에서 외부 트리거 수신
-  useEffect(() => {
-    const handler = () => {
-      if (!listening && !state.loading) { setTranscript(''); start(); }
-    };
-    window.addEventListener('talkment_trigger_mic', handler);
-    return () => window.removeEventListener('talkment_trigger_mic', handler);
-  }, [listening, state.loading, start, setTranscript]);
-
-  const showMic =
-    activeMode === INVENTORY_MODES.INTERNAL &&
-    state.screen === SCREENS.DASHBOARD &&
-    !state.signatureModal;
   if (!showMic) return null;
 
   return (

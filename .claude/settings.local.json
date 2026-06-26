@@ -4,7 +4,28 @@
       "Bash(Get-ChildItem -Path \"D:\\\\AI\\\\talkment\" -Recurse -Force)",
       "Bash(Select-Object FullName)",
       "Bash(Sort-Object FullName)",
-      "PowerShell(Set-Location \"D:\\\\AI\\\\talkment\\\\backend\"; $p = Start-Process -NoNewWindow -PassThru -FilePath \"node\" -ArgumentList \"src/index.js\"; Start-Sleep -Seconds 3; $p.Kill\\(\\); Write-Host \"Startup OK\")"
+      "PowerShell(Set-Location \"D:\\\\AI\\\\talkment\\\\backend\"; $p = Start-Process -NoNewWindow -PassThru -FilePath \"node\" -ArgumentList \"src/index.js\"; Start-Sleep -Seconds 3; $p.Kill\\(\\); Write-Host \"Startup OK\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npm ls *)",
+      "Bash(rm -rf node_modules)",
+      "Bash(npm install *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('lockfileVersion:', d.get\\('lockfileVersion'\\)\\); print\\('packages count:', len\\(d.get\\('packages', {}\\)\\)\\)\")",
+      "PowerShell($lock = Get-Content \"D:\\\\AI\\\\talkment\\\\backend\\\\package-lock.json\" | ConvertFrom-Json; \"lockfileVersion: $\\($lock.lockfileVersion\\)\"; \"packages count: $\\(\\($lock.packages.PSObject.Properties | Measure-Object\\).Count\\)\")",
+      "PowerShell($lock = Get-Content \"D:\\\\AI\\\\talkment\\\\frontend\\\\package-lock.json\" | ConvertFrom-Json; \"lockfileVersion: $\\($lock.lockfileVersion\\)\"; \"packages count: $\\(\\($lock.packages.PSObject.Properties | Measure-Object\\).Count\\)\")",
+      "PowerShell($lock = Get-Content \"D:\\\\AI\\\\talkment\\\\backend\\\\package-lock.json\" | ConvertFrom-Json -AsHashTable; \"lockfileVersion: $\\($lock.lockfileVersion\\)\"; \"packages count: $\\($lock.packages.Count\\)\")",
+      "PowerShell($lock = Get-Content \"D:\\\\AI\\\\talkment\\\\frontend\\\\package-lock.json\" | ConvertFrom-Json -AsHashTable; \"lockfileVersion: $\\($lock.lockfileVersion\\)\"; \"packages count: $\\($lock.packages.Count\\)\")",
+      "Skill(code-review)",
+      "Workflow(code-review)",
+      "Skill(fewer-permission-prompts)",
+      "Bash(python3 *)",
+      "Skill(artifact-design)",
+      "Artifact",
+      "Bash(node *)",
+      "Bash(git -C /d/AI/talkment diff HEAD --stat)",
+      "PowerShell(Stop-Process *)",
+      "Bash(git *)"
     ]
   }
 }

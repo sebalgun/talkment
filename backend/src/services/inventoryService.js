@@ -1,7 +1,10 @@
 /**
  * 통합 재고 서비스
  *
- * 새 구조 [물품관리] 탭 우선 읽기 → 없으면 구 탭([시리얼 물품 관리] + [일반 물품 관리]) 폴백
+ * 우선순위:
+ *   1) 워크스페이스에 탭 설정이 있으면 해당 탭 직접 사용 (_source: 'legacy')
+ *   2) 탭 설정 없고 [물품관리] 탭에 데이터가 있으면 사용 (_source: 'inventoryMaster')
+ *   3) 레거시 하드코딩 탭명 폴백 (_source: 'legacy')
  *
  * 반환 아이템 공통 추가 필드:
  *   _type        : 'serial' | 'consumable'
@@ -12,12 +15,22 @@
  *   _minQuantity : number | null
  *   _isLowStock  : boolean
  *   _spec        : string
+ *   _source      : 'inventoryMaster' | 'legacy'
  */
 
 import { fetchSheetRows } from './googleSheets.js';
-import { getSheetNames } from './tabConfigService.js';
+import { getTabConfig, getSheetNames } from './tabConfigService.js';
 
 const trim = (v) => String(v ?? '').trim();
+
+// || 체인의 falsy-zero 함정 방지: 빈 문자열/null/undefined만 건너뜀
+function pickCol(row, ...keys) {
+  for (const k of keys) {
+    const v = String(row[k] ?? '').trim();
+    if (v !== '') return v;
+  }
+  return '';
+}
 
 function normalizeStatus(raw) {
   const s = trim(raw);
@@ -25,14 +38,14 @@ function normalizeStatus(raw) {
   return 'available';
 }
 
-function parseRow(row) {
+function parseRow(row, source = 'legacy') {
   const itemName = trim(row['품목명'] || row['항목']);
   if (!itemName) return null;
 
-  const serialNumber = trim(row['시리얼 넘버'] || row['시리얼넘버'] || '');
+  const serialNumber = trim(pickCol(row, '시리얼 넘버', '시리얼넘버'));
 
   if (serialNumber) {
-    const rawStatus = row['현재 상태'] || row['상태'] || '';
+    const rawStatus = pickCol(row, '현재 상태', '상태');
     return {
       ...row,
       _type: 'serial',
@@ -42,17 +55,16 @@ function parseRow(row) {
       _quantity: 1,
       _minQuantity: null,
       _isLowStock: false,
-      _spec: trim(row['규격/상세'] || row['규격'] || ''),
+      _spec: trim(pickCol(row, '규격/상세', '규격')),
+      _source: source,
     };
   }
 
-  // 소모품 — 신/구 컬럼명 모두 허용
-  const qty = parseInt(
-    row['재고 수량'] || row['현재 잔여갯수'] || row['수량'] || '0', 10
-  );
-  const minRaw = row['최소 재고 수량'] || row['최소재고'] || row['최소수량'] || '';
-  const minQty = parseInt(minRaw, 10);
-  const quantity = isNaN(qty) ? 0 : qty;
+  // 소모품 — falsy-zero 방지: '0'도 정상 처리
+  const qtyStr = pickCol(row, '재고 수량', '현재 잔여갯수', '수량');
+  const minStr = pickCol(row, '최소 재고 수량', '최소재고', '최소수량');
+  const quantity = isNaN(parseInt(qtyStr, 10)) ? 0 : parseInt(qtyStr, 10);
+  const minQty = parseInt(minStr, 10);
   const minQuantity = isNaN(minQty) ? null : minQty;
 
   return {
@@ -64,23 +76,35 @@ function parseRow(row) {
     _quantity: quantity,
     _minQuantity: minQuantity,
     _isLowStock: minQuantity !== null && quantity < minQuantity,
-    _spec: trim(row['규격/상세'] || row['규격'] || ''),
+    _spec: trim(pickCol(row, '규격/상세', '규격')),
+    _source: source,
   };
 }
 
 export async function getInventory() {
-  // 새 구조 [물품관리] 우선
-  let rawRows = await fetchSheetRows('물품관리');
+  const cfg = getTabConfig();
 
-  if (rawRows.length === 0) {
-    // 구 구조 폴백
+  // 워크스페이스 탭 설정 있으면 직접 사용 — 불필요한 API 호출 없음
+  if (cfg.hasTab('serialAssets') || cfg.hasTab('consumableMaster')) {
     const NAMES = getSheetNames();
     const [serialRows, consumableRows] = await Promise.all([
-      fetchSheetRows(NAMES.SERIAL_ASSETS),
-      fetchSheetRows(NAMES.CONSUMABLE_MASTER),
+      cfg.hasTab('serialAssets') ? fetchSheetRows(NAMES.SERIAL_ASSETS) : Promise.resolve([]),
+      cfg.hasTab('consumableMaster') ? fetchSheetRows(NAMES.CONSUMABLE_MASTER) : Promise.resolve([]),
     ]);
-    rawRows = [...serialRows, ...consumableRows];
+    return [...serialRows, ...consumableRows].map((r) => parseRow(r, 'legacy')).filter(Boolean);
   }
 
-  return rawRows.map(parseRow).filter(Boolean);
+  // 통합 [물품관리] 탭 시도
+  const masterRows = await fetchSheetRows('물품관리');
+  if (masterRows.length > 0) {
+    return masterRows.map((r) => parseRow(r, 'inventoryMaster')).filter(Boolean);
+  }
+
+  // 레거시 폴백
+  const NAMES = getSheetNames();
+  const [serialRows, consumableRows] = await Promise.all([
+    fetchSheetRows(NAMES.SERIAL_ASSETS),
+    fetchSheetRows(NAMES.CONSUMABLE_MASTER),
+  ]);
+  return [...serialRows, ...consumableRows].map((r) => parseRow(r, 'legacy')).filter(Boolean);
 }

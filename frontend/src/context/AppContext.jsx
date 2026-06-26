@@ -14,6 +14,7 @@ export const INTERNAL_SHEET_TABS = [
   { id: 'consumableMaster', label: '일반 물품', api: 'consumableMaster' },
   { id: 'consumableLog', label: '입출고 내역', api: 'consumableLog' },
   { id: 'employees', label: '명단', api: 'employees' },
+  { id: 'inventoryMaster', label: '물품관리', api: 'inventoryMaster' },
 ];
 
 export function getSheetTabsForMode() {

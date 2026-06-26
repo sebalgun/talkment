@@ -16,7 +16,6 @@ import {
   activateWorkspace,
 } from '../services/onboardingStore.js';
 import { fetchSheetRows } from '../services/googleSheets.js';
-import { saveAppConfig } from '../services/appConfigStore.js';
 
 const router = Router();
 
