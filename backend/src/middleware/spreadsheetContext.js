@@ -20,7 +20,11 @@ export function getInventoryMode() {
 
 /** API 요청마다 X-Spreadsheet-Id + X-Inventory-Mode 헤더 또는 .env 기본값 적용 */
 export function spreadsheetMiddleware(req, res, next) {
-  if (req.originalUrl.startsWith('/api/app-config') || req.originalUrl.startsWith('/api/config/')) {
+  if (
+    req.originalUrl.startsWith('/api/app-config') ||
+    req.originalUrl.startsWith('/api/config/') ||
+    req.originalUrl.startsWith('/api/onboarding')
+  ) {
     return next();
   }
   const id = req.headers['x-spreadsheet-id'] || config.google.spreadsheetId;
