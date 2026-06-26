@@ -368,6 +368,81 @@ body {
   color: var(--muted);
 }
 
+/* ── 직원 검색 (직접 입력 모드) ── */
+.emp-search-wrap {
+  position: relative;
+}
+
+.emp-search-drop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 20;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.emp-search-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid var(--border);
+}
+
+.emp-search-item:last-child { border-bottom: none; }
+.emp-search-item:hover { background: #f0f7ff; }
+
+.emp-search-item strong {
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+
+.emp-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.emp-search-none {
+  padding: 10px 14px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.emp-selected-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius);
+}
+
+.emp-selected-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.emp-selected-info strong {
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+
 /* ── Return List (Screen D) ── */
 .result-count {
   font-size: 0.8125rem;
