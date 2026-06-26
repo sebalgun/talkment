@@ -380,7 +380,7 @@ export default function FormScreen() {
         onClick={handleConfirm}
         disabled={loading || !canConfirm}
       >
-        {loading ? '처리 중...' : '출고 확정 → 서명'}
+        {loading ? '처리 중...' : fieldOptions.requireSignature ? '출고 확정 → 서명' : '출고 확정'}
       </button>
 
       {state.status && <div className={`status-msg ${state.status.type}`}>{state.status.msg}</div>}
