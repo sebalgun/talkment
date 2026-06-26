@@ -1458,7 +1458,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 12px 8px;
+  padding: 10px 4px;
   background: none;
   border: none;
   cursor: pointer;
@@ -1469,7 +1469,7 @@ body {
 .dash-stat-chip.dash-stat-warn .dash-stat-num { color: var(--danger); }
 
 .dash-stat-num {
-  font-size: 1.375rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--primary);
   line-height: 1;
@@ -2303,49 +2303,27 @@ body {
   background: rgba(255,255,255,0.3);
 }
 
-/* ── Dashboard Voice Button ─────────────────────────────── */
-.dash-voice-btn {
+/* ── Dashboard Hint Banner ───────────────────────────────── */
+.dash-hint-banner {
   display: flex;
   align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 18px 20px;
-  background: var(--primary);
-  border: none;
-  border-radius: 16px;
-  cursor: pointer;
-  text-align: left;
+  gap: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius);
+  padding: 10px 14px;
   margin-bottom: 14px;
-  transition: background 0.15s, transform 0.1s;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.25);
+  font-size: 0.8125rem;
+  color: #1d4ed8;
 }
 
-.dash-voice-btn:hover { background: var(--primary-dark); }
-.dash-voice-btn:active { transform: scale(0.98); }
-.dash-voice-btn.loading { background: #64748b; cursor: default; }
-
-.dash-voice-icon {
-  font-size: 2rem;
+.dash-hint-icon {
+  font-size: 1rem;
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
 }
 
-.dash-voice-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.dash-voice-title {
-  font-size: 0.9375rem;
+.dash-hint-arrow {
   font-weight: 700;
-  color: white;
-  line-height: 1.3;
-}
-
-.dash-voice-hint {
-  font-size: 0.75rem;
-  color: rgba(255,255,255,0.75);
 }
 
 /* ── Dashboard Stat: danger variant ─────────────────────── */
@@ -2401,6 +2379,105 @@ body {
   padding: 3px 8px;
   border-radius: 999px;
 }
+
+/* ── 품목 그룹 카드 (아코디언) ──────────────────────────────── */
+.item-group-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.item-group-card-open {
+  border-color: var(--primary);
+}
+
+.item-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.item-group-header:active { background: #f1f5f9; }
+
+.item-group-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-group-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.item-group-stats {
+  display: flex;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.item-group-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.item-group-stat-num {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+}
+
+.item-group-stat-lbl {
+  font-size: 0.625rem;
+  color: var(--muted);
+}
+
+.item-stat-warn .item-group-stat-num { color: var(--danger); }
+
+.item-group-chevron {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.item-group-detail {
+  border-top: 1px solid var(--border);
+  background: #f8fafc;
+}
+
+.inv-serial-list-inset {
+  padding: 4px 14px 8px;
+}
+
+.item-detail-row {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.item-detail-row:hover { background: #f1f5f9; }
+.item-detail-row:active { background: #e8eef8; }
 
 /* ── Serial Items ────────────────────────────────────────── */
 .inv-serial-list {

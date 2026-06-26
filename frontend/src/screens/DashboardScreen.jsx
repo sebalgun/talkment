@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import { api } from '../api/client';
-import { useApp, SCREENS } from '../context/AppContext';
+import { useApp } from '../context/AppContext';
 import { useSheet } from '../context/SheetContext';
 import { processReturnSearch, openManualCheckoutForm } from '../components/VoiceCommandHandler';
 
@@ -13,68 +13,96 @@ function groupInventory(items) {
       map.set(name, { itemName: name, type: item._type, items: [] });
     }
     const group = map.get(name);
-    // 같은 이름에 다른 타입이 섞이면 'mixed' 처리
     if (group.type !== item._type) group.type = 'mixed';
     group.items.push(item);
   }
   return [...map.values()];
 }
 
-// ── 시리얼 그룹 카드 ──────────────────────────────────────────
-function SerialGroupCard({ group, onItemClick }) {
-  const available = group.items.filter((i) => i._status === 'available').length;
-  const total = group.items.length;
+// ── 품목 그룹 카드 (아코디언) ──────────────────────────────────
+function ItemGroupCard({ group, onItemClick }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const isSerial = group.type === 'serial';
+  const total = isSerial
+    ? group.items.length
+    : group.items.reduce((s, i) => s + (parseInt(i._quantity) || 0), 0);
+  const checkedOut = isSerial
+    ? group.items.filter((i) => i._status !== 'available').length
+    : null;
 
   return (
-    <div className="inv-group-card">
-      <div className="inv-group-header">
-        <span className="inv-group-name">{group.itemName}</span>
-        <span className={`inv-group-badge ${available === 0 ? 'badge-danger' : available < total ? 'badge-warn' : 'badge-ok'}`}>
-          {available}/{total} 가용
-        </span>
-      </div>
-      <div className="inv-serial-list">
-        {group.items.map((item) => (
-          <button
-            key={item._rowIndex}
-            className="inv-serial-row"
-            onClick={() => onItemClick(item)}
-          >
-            <span className={`inv-status-dot ${item._status === 'available' ? 'available' : 'checked-out'}`} />
-            <span className="inv-serial-num">{item._serialNumber}</span>
-            {item._spec && <span className="inv-serial-spec">{item._spec}</span>}
-            <span className={`inv-status-text ${item._status === 'available' ? 'text-ok' : 'text-danger'}`}>
-              {item._status === 'available' ? '보유중' : '반출완료'}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+    <div className={`item-group-card${expanded ? ' item-group-card-open' : ''}`}>
+      <button className="item-group-header" onClick={() => setExpanded(!expanded)}>
+        <div className="item-group-left">
+          <span className="item-group-name">{group.itemName}</span>
+        </div>
+        <div className="item-group-stats">
+          <div className="item-group-stat">
+            <span className="item-group-stat-num">{total}</span>
+            <span className="item-group-stat-lbl">총 갯수</span>
+          </div>
+          {isSerial && (
+            <div className={`item-group-stat${checkedOut > 0 ? ' item-stat-warn' : ''}`}>
+              <span className="item-group-stat-num">{checkedOut}</span>
+              <span className="item-group-stat-lbl">반출</span>
+            </div>
+          )}
+          <div className="item-group-stat">
+            <span className="item-group-stat-num">0</span>
+            <span className="item-group-stat-lbl">연체</span>
+          </div>
+        </div>
+        <span className="item-group-chevron">{expanded ? '▾' : '▸'}</span>
+      </button>
 
-// ── 소모품 카드 (대시보드 전용, SheetItemCards.ConsumableCard와 별개) ──
-function InvConsumableCard({ item, onItemClick }) {
-  return (
-    <button className="inv-group-card inv-consumable-card" onClick={() => onItemClick(item)}>
-      <div className="inv-consumable-row">
-        <div>
-          <div className="inv-group-name">{item._itemName}</div>
-          {item._spec && <div className="inv-consumable-spec">{item._spec}</div>}
-        </div>
-        <div className="inv-consumable-right">
-          <span className={`inv-consumable-qty ${item._isLowStock ? 'qty-low' : ''}`}>
-            {item._quantity}
-          </span>
-          <span className="inv-consumable-unit">개</span>
-        </div>
-      </div>
-      {item._isLowStock && (
-        <div className="inv-low-stock">
-          ⚠️ 재고 부족 — 최소 {item._minQuantity}개
+      {expanded && (
+        <div className="item-group-detail">
+          {isSerial ? (
+            <div className="inv-serial-list inv-serial-list-inset">
+              {group.items.map((item) => (
+                <button
+                  key={item._rowIndex}
+                  className="inv-serial-row"
+                  onClick={() => onItemClick(item)}
+                >
+                  <span className={`inv-status-dot ${item._status === 'available' ? 'available' : 'checked-out'}`} />
+                  <span className="inv-serial-num">{item._serialNumber}</span>
+                  {item._spec && <span className="inv-serial-spec">{item._spec}</span>}
+                  <span className={`inv-status-text ${item._status === 'available' ? 'text-ok' : 'text-danger'}`}>
+                    {item._status === 'available' ? '보유중' : '반출완료'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            group.items.map((item) => (
+              <button
+                key={item._rowIndex}
+                className="item-detail-row"
+                onClick={() => onItemClick(item)}
+              >
+                <div className="inv-consumable-row">
+                  <div>
+                    <div className="inv-group-name">{item._itemName}</div>
+                    {item._spec && <div className="inv-consumable-spec">{item._spec}</div>}
+                  </div>
+                  <div className="inv-consumable-right">
+                    <span className={`inv-consumable-qty ${item._isLowStock ? 'qty-low' : ''}`}>
+                      {item._quantity}
+                    </span>
+                    <span className="inv-consumable-unit">개</span>
+                  </div>
+                </div>
+                {item._isLowStock && (
+                  <div className="inv-low-stock">⚠️ 재고 부족 — 최소 {item._minQuantity}개</div>
+                )}
+              </button>
+            ))
+          )}
         </div>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -109,12 +137,7 @@ export default function DashboardScreen() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleVoiceClick = () => {
-    window.dispatchEvent(new CustomEvent('talkment_trigger_mic'));
-  };
-
   const handleItemClick = (item) => {
-    // _source: 'inventoryMaster' → 통합 [물품관리] 탭, 'legacy' → 구분된 탭
     const tab = item._source === 'inventoryMaster'
       ? 'inventoryMaster'
       : item._type === 'serial' ? 'assets' : 'consumableMaster';
@@ -141,25 +164,20 @@ export default function DashboardScreen() {
 
   const groups = groupInventory(inventory);
   const itemTypeCount = groups.length;
+  const totalQuantity = inventory.reduce((sum, item) => {
+    if (item._type === 'serial') return sum + 1;
+    return sum + (parseInt(item._quantity) || 0);
+  }, 0);
   const { unreturned = 0, overdue = 0 } = stats.returns || {};
 
   return (
     <div className="screen screen-dashboard">
 
-      {/* ── 음성 입력 버튼 ── */}
-      <button
-        className={`dash-voice-btn ${state.loading ? 'loading' : ''}`}
-        onClick={handleVoiceClick}
-        disabled={state.loading}
-      >
-        <span className="dash-voice-icon">🎤</span>
-        <div className="dash-voice-text">
-          <span className="dash-voice-title">
-            {state.loading ? '처리 중...' : state.transcript ? `"${state.transcript}"` : '탭하여 음성으로 반출·반납'}
-          </span>
-          <span className="dash-voice-hint">말씀하세요 — AI가 자동으로 처리합니다</span>
-        </div>
-      </button>
+      {/* ── 입력 힌트 배너 ── */}
+      <div className="dash-hint-banner">
+        <span className="dash-hint-icon">💬</span>
+        <span>직접 입력 <span className="dash-hint-arrow">→</span> 말씀하세요. AI가 자동으로 처리합니다</span>
+      </div>
 
       {/* ── 요약 칩 ── */}
       <div className="dash-stats">
@@ -168,12 +186,17 @@ export default function DashboardScreen() {
           <span className="dash-stat-lbl">총 품목 종류</span>
         </div>
         <div className="dash-stat-sep" />
+        <div className="dash-stat-chip">
+          <span className="dash-stat-num">{totalQuantity}</span>
+          <span className="dash-stat-lbl">총 갯수</span>
+        </div>
+        <div className="dash-stat-sep" />
         <button
           className={`dash-stat-chip ${unreturned > 0 ? 'dash-stat-warn' : ''}`}
           onClick={handleUnreturnedClick}
         >
           <span className="dash-stat-num">{unreturned}</span>
-          <span className="dash-stat-lbl">미반납</span>
+          <span className="dash-stat-lbl">반출</span>
         </button>
         <div className="dash-stat-sep" />
         <div className={`dash-stat-chip ${overdue > 0 ? 'dash-stat-danger' : ''}`}>
@@ -185,7 +208,7 @@ export default function DashboardScreen() {
       {/* ── 통계 오류 안내 ── */}
       {statsError && (
         <div className="status-msg error" style={{ margin: '0 16px 8px', fontSize: '0.8rem' }}>
-          통계 조회 실패 — 미반납·연체 수치를 불러오지 못했습니다
+          통계 조회 실패 — 반출·연체 수치를 불러오지 못했습니다
         </div>
       )}
 
@@ -210,37 +233,20 @@ export default function DashboardScreen() {
         )}
 
         {groups.map((group) =>
-          group.type === 'serial' ? (
-            <SerialGroupCard
-              key={group.itemName}
-              group={group}
-              onItemClick={handleItemClick}
-            />
-          ) : group.type === 'consumable' ? (
+          group.type === 'mixed' ? (
             group.items.map((item) => (
-              <InvConsumableCard
+              <ItemGroupCard
                 key={item._rowIndex}
-                item={item}
+                group={{ itemName: group.itemName, type: item._type, items: [item] }}
                 onItemClick={handleItemClick}
               />
             ))
           ) : (
-            // mixed: 같은 이름에 시리얼/소모품 혼재 — 각 아이템을 개별 타입으로 렌더링
-            group.items.map((item) =>
-              item._type === 'serial' ? (
-                <SerialGroupCard
-                  key={item._rowIndex}
-                  group={{ itemName: group.itemName, type: 'serial', items: [item] }}
-                  onItemClick={handleItemClick}
-                />
-              ) : (
-                <InvConsumableCard
-                  key={item._rowIndex}
-                  item={item}
-                  onItemClick={handleItemClick}
-                />
-              )
-            )
+            <ItemGroupCard
+              key={group.itemName}
+              group={group}
+              onItemClick={handleItemClick}
+            />
           )
         )}
       </div>
