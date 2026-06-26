@@ -204,6 +204,14 @@ export const api = {
 
   getWorkspaceCardStats: (workspaceId) =>
     authFetch(`${BASE}/onboarding/workspaces/${workspaceId}/card-stats`),
+
+  getFieldOptions: () => authFetch(`${BASE}/onboarding/active/field-options`),
+
+  saveFieldOptions: (workspaceId, fieldOptions) =>
+    authFetch(`${BASE}/onboarding/workspaces/${workspaceId}/field-options`, {
+      method: 'PATCH',
+      body: JSON.stringify({ fieldOptions }),
+    }),
 };
 
 export { parseSpreadsheetId };

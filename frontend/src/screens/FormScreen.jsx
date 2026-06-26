@@ -5,11 +5,11 @@ import { api } from '../api/client';
 import { todayISO } from '../utils/date';
 import { getCheckoutValidationErrors } from '../utils/checkoutValidation';
 
-const FORM_FIELDS = [
+const BASE_FORM_FIELDS = [
   { key: 'itemName', label: '품목', type: 'select' },
   { key: 'quantity', label: '수량', type: 'number', show: (f) => f.itemType === 'serial' || f.itemType === 'consumable' },
   { key: 'checkoutDate', label: '출고일', type: 'date', readonly: true },
-  { key: 'returnDueDate', label: '반납 예정일', type: 'date' },
+  { key: 'returnDueDate', label: '반납 예정일', type: 'date', optional: true },
 ];
 
 function uniqueItemOptions(rows, nameKey = '항목') {
@@ -48,6 +48,18 @@ export default function FormScreen() {
   const [assetsRows, setAssetsRows] = useState([]);
   const [consumableMaster, setConsumableMaster] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [fieldOptions, setFieldOptions] = useState({ requireSignature: true, trackReturnDue: true });
+
+  useEffect(() => {
+    api.getFieldOptions().then(setFieldOptions).catch(() => {});
+  }, []);
+
+  const FORM_FIELDS = useMemo(() => {
+    return BASE_FORM_FIELDS.filter((f) => {
+      if (f.key === 'returnDueDate' && !fieldOptions.trackReturnDue) return false;
+      return true;
+    });
+  }, [fieldOptions.trackReturnDue]);
 
   const quantity = Math.max(1, parseInt(form?.quantity, 10) || 1);
   const selectedSerials = form?.serialNumbers || [];
@@ -231,10 +243,15 @@ export default function FormScreen() {
         quantity > 1
           ? `${personName} ${form.itemName} ${quantity}대 출고`
           : `${personName} ${form.itemName} 출고`;
-      dispatch({
-        type: 'OPEN_SIGNATURE',
-        payload: { mode: 'checkout', checkoutResult: result, label },
-      });
+
+      if (fieldOptions.requireSignature) {
+        dispatch({
+          type: 'OPEN_SIGNATURE',
+          payload: { mode: 'checkout', checkoutResult: result, label },
+        });
+      } else {
+        goDashboard({ type: 'success', msg: `${label} 완료` });
+      }
     } catch (e) {
       dispatch({ type: 'SET_STATUS', payload: { type: 'error', msg: e.message } });
     } finally {

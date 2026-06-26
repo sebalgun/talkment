@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSheet } from '../context/SheetContext';
 import { api } from '../api/client';
@@ -93,9 +93,99 @@ function ConfigExportSection() {
   );
 }
 
+const FIELD_TOGGLE_DEF = [
+  {
+    key: 'requireSignature',
+    label: '서명 요구',
+    desc: '출고·반납 후 서명 단계를 표시합니다.',
+    defaultVal: true,
+  },
+  {
+    key: 'trackReturnDue',
+    label: '반납예정일 입력',
+    desc: '출고 폼에 반납 예정일 입력란을 표시합니다.',
+    defaultVal: true,
+  },
+];
+
+function FieldOptionsSection({ workspaceId }) {
+  const [options, setOptions] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.getFieldOptions()
+      .then(setOptions)
+      .catch(() => setOptions({ requireSignature: true, trackReturnDue: true }));
+  }, []);
+
+  const handleToggle = async (key) => {
+    if (!options) return;
+    const next = { ...options, [key]: !options[key] };
+    setOptions(next);
+    if (!workspaceId) return;
+
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    try {
+      await api.saveFieldOptions(workspaceId, next);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!options) return <div className="empty-hint">불러오는 중...</div>;
+
+  return (
+    <div>
+      {FIELD_TOGGLE_DEF.map((def) => {
+        const value = options[def.key] ?? def.defaultVal;
+        return (
+          <div key={def.key} className="field-toggle-row">
+            <div className="field-toggle-info">
+              <span className="field-toggle-label">{def.label}</span>
+              <span className="field-toggle-desc">{def.desc}</span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={value}
+              className={`toggle-switch ${value ? 'on' : 'off'}`}
+              onClick={() => handleToggle(def.key)}
+              disabled={saving}
+            >
+              <span className="toggle-knob" />
+            </button>
+          </div>
+        );
+      })}
+      {saved && <div className="status-msg success" style={{ marginTop: 8 }}>저장됨</div>}
+      {error && <div className="status-msg error" style={{ marginTop: 8 }}>{error}</div>}
+      {!workspaceId && (
+        <div className="data-card-meta" style={{ marginTop: 8 }}>
+          설정을 저장하려면 작업 공간을 활성화하세요.
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsScreen({ onOpenSheetManager }) {
   const { user, logout } = useAuth();
   const { activeSheet } = useSheet();
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(null);
+
+  useEffect(() => {
+    api.getOnboardingStatus()
+      .then((s) => setActiveWorkspaceId(s.activeWorkspaceId))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="screen-settings">
@@ -140,6 +230,11 @@ export default function SettingsScreen({ onOpenSheetManager }) {
       </div>
 
       <ConfigExportSection />
+
+      <div className="card">
+        <h3>출고 폼 설정</h3>
+        <FieldOptionsSection workspaceId={activeWorkspaceId} />
+      </div>
 
       <div className="card">
         <h3>앱 정보</h3>

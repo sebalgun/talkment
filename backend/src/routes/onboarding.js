@@ -14,6 +14,8 @@ import {
   deleteWorkspace,
   updateWorkspaceInventoryType,
   activateWorkspace,
+  getActiveFieldOptions,
+  updateWorkspaceFieldOptions,
 } from '../services/onboardingStore.js';
 import { fetchSheetRows } from '../services/googleSheets.js';
 
@@ -303,6 +305,32 @@ router.patch('/workspaces/:id/inventory-type', (req, res) => {
     const { inventoryType } = req.body ?? {};
     if (!inventoryType) return res.status(400).json({ error: 'inventoryType이 필요합니다.' });
     const workspace = updateWorkspaceInventoryType(req.params.id, inventoryType);
+    res.json(workspace);
+  } catch (e) {
+    const status = e.message.includes('찾을 수 없습니다') ? 404 : 400;
+    res.status(status).json({ error: e.message });
+  }
+});
+
+/**
+ * GET /api/onboarding/active/field-options
+ * 현재 활성 작업 공간의 fieldOptions 반환
+ */
+router.get('/active/field-options', (_req, res) => {
+  res.json(getActiveFieldOptions());
+});
+
+/**
+ * PATCH /api/onboarding/workspaces/:id/field-options
+ * 출고 폼 설정(서명 요구, 반납예정일 등) 저장
+ */
+router.patch('/workspaces/:id/field-options', (req, res) => {
+  try {
+    const { fieldOptions } = req.body ?? {};
+    if (!fieldOptions || typeof fieldOptions !== 'object') {
+      return res.status(400).json({ error: 'fieldOptions 객체가 필요합니다.' });
+    }
+    const workspace = updateWorkspaceFieldOptions(req.params.id, fieldOptions);
     res.json(workspace);
   } catch (e) {
     const status = e.message.includes('찾을 수 없습니다') ? 404 : 400;

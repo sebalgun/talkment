@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../api/client';
 
 function parseDate(raw) {
@@ -32,6 +32,9 @@ export default function HistoryScreen() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [personFilter, setPersonFilter] = useState('');
 
   const loadData = useCallback(async () => {
     setFetching(true);
@@ -48,10 +51,32 @@ export default function HistoryScreen() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const persons = useMemo(() => {
+    const set = new Set();
+    for (const item of log) {
+      const name = String(item['출고자'] || '').trim();
+      if (name) set.add(name);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'ko'));
+  }, [log]);
+
+  const hasFilter = search || fromDate || toDate || personFilter || filterStatus !== 'all';
+
   const filtered = log.filter((item) => {
     const returned = String(item['반납일'] || '').trim();
     if (filterStatus === 'unreturned' && returned) return false;
     if (filterStatus === 'returned' && !returned) return false;
+
+    if (personFilter) {
+      if (String(item['출고자'] || '').trim() !== personFilter) return false;
+    }
+
+    if (fromDate || toDate) {
+      const d = parseDate(item['출고일'] || item['반출일']);
+      if (fromDate && (!d || d < fromDate)) return false;
+      if (toDate && (!d || d > toDate)) return false;
+    }
+
     if (search) {
       const q = search.toLowerCase();
       return (
@@ -65,6 +90,14 @@ export default function HistoryScreen() {
 
   const groups = groupByDate(filtered);
 
+  function resetFilters() {
+    setSearch('');
+    setFromDate('');
+    setToDate('');
+    setPersonFilter('');
+    setFilterStatus('all');
+  }
+
   return (
     <div className="screen-history">
       <div className="history-toolbar">
@@ -75,21 +108,61 @@ export default function HistoryScreen() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <div className="history-filters">
-          {[
-            { id: 'all', label: '전체' },
-            { id: 'unreturned', label: '미반납' },
-            { id: 'returned', label: '반납완료' },
-          ].map((f) => (
-            <button
-              key={f.id}
-              className={`history-filter-btn ${filterStatus === f.id ? 'active' : ''}`}
-              onClick={() => setFilterStatus(f.id)}
-            >
-              {f.label}
-            </button>
-          ))}
+
+        {/* 날짜 범위 */}
+        <div className="history-date-range">
+          <input
+            className="history-date-input"
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            title="시작일"
+          />
+          <span className="history-date-sep">~</span>
+          <input
+            className="history-date-input"
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            title="종료일"
+          />
         </div>
+
+        {/* 출고자 + 상태 필터 */}
+        <div className="history-filter-row">
+          <div className="history-filters">
+            {[
+              { id: 'all', label: '전체' },
+              { id: 'unreturned', label: '미반납' },
+              { id: 'returned', label: '반납완료' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                className={`history-filter-btn ${filterStatus === f.id ? 'active' : ''}`}
+                onClick={() => setFilterStatus(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <select
+            className="history-person-select"
+            value={personFilter}
+            onChange={(e) => setPersonFilter(e.target.value)}
+          >
+            <option value="">전체 인원</option>
+            {persons.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+
+        {hasFilter && (
+          <button className="history-reset-btn" onClick={resetFilters}>
+            필터 초기화
+          </button>
+        )}
       </div>
 
       {fetching && <div className="empty">불러오는 중...</div>}

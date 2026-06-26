@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { api } from '../api/client';
 
 function getReturnLabel(item) {
   return `${item['항목']} 반납 (${item['출고자']})`;
@@ -7,16 +9,30 @@ function getReturnLabel(item) {
 export default function ReturnListScreen() {
   const { state, dispatch, goDashboard } = useApp();
   const { returnItems, returnQuery, loading } = state;
+  const [fieldOptions, setFieldOptions] = useState({ requireSignature: true });
 
-  const handleConfirmReturn = (item) => {
-    dispatch({
-      type: 'OPEN_SIGNATURE',
-      payload: {
-        mode: 'return',
-        returnItem: item,
-        label: getReturnLabel(item),
-      },
-    });
+  useEffect(() => {
+    api.getFieldOptions().then(setFieldOptions).catch(() => {});
+  }, []);
+
+  const handleConfirmReturn = async (item) => {
+    if (fieldOptions.requireSignature) {
+      dispatch({
+        type: 'OPEN_SIGNATURE',
+        payload: { mode: 'return', returnItem: item, label: getReturnLabel(item) },
+      });
+      return;
+    }
+
+    dispatch({ type: 'SET_LOADING', payload: true });
+    try {
+      await api.processReturn(item);
+      goDashboard({ type: 'success', msg: `${getReturnLabel(item)} 완료` });
+    } catch (e) {
+      dispatch({ type: 'SET_STATUS', payload: { type: 'error', msg: e.message } });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
   };
 
   return (

@@ -354,6 +354,34 @@ export function updateWorkspaceInventoryType(workspaceId, inventoryType) {
   return state.workspaces[idx];
 }
 
+const DEFAULT_FIELD_OPTIONS = {
+  requireSignature: true,
+  trackReturnDue: true,
+};
+
+/**
+ * 활성 작업 공간의 fieldOptions 반환
+ */
+export function getActiveFieldOptions() {
+  const workspace = getActiveWorkspace();
+  return { ...DEFAULT_FIELD_OPTIONS, ...(workspace?.fieldOptions ?? {}) };
+}
+
+/**
+ * 작업 공간 필드 옵션(출고 폼 설정) 저장
+ * @param {string} workspaceId
+ * @param {object} fieldOptions — { requireSignature, trackReturnDue }
+ */
+export function updateWorkspaceFieldOptions(workspaceId, fieldOptions) {
+  const state = readRaw();
+  const idx = state.workspaces.findIndex((w) => w.id === workspaceId);
+  if (idx === -1) throw new Error(`작업 공간을 찾을 수 없습니다: ${workspaceId}`);
+  state.workspaces[idx].fieldOptions = { ...DEFAULT_FIELD_OPTIONS, ...fieldOptions };
+  state.workspaces[idx].updatedAt = new Date().toISOString();
+  writeRaw(state);
+  return state.workspaces[idx];
+}
+
 /**
  * 작업 공간 삭제
  * - 마지막 workspace 삭제 시 온보딩 상태 초기화

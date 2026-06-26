@@ -1738,6 +1738,74 @@ body {
   font-weight: 600;
 }
 
+.history-date-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.history-date-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 0;
+}
+.history-date-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.history-date-sep {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.history-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.history-filter-row .history-filters {
+  flex: 1;
+}
+
+.history-person-select {
+  padding: 6px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  max-width: 140px;
+}
+.history-person-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.history-reset-btn {
+  margin-top: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.75rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+.history-reset-btn:hover {
+  background: var(--border);
+}
+
 .history-timeline {
   display: flex;
   flex-direction: column;
@@ -1830,6 +1898,65 @@ body {
   font-size: 0.8125rem;
   color: var(--muted);
 }
+
+/* ── 필드 토글 스위치 ────────────────────────────────────── */
+
+.field-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.field-toggle-row:last-of-type { border-bottom: none; }
+
+.field-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.field-toggle-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.field-toggle-desc {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+  padding: 0;
+}
+.toggle-switch.on  { background: var(--primary); }
+.toggle-switch.off { background: #cbd5e1; }
+.toggle-switch:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: left 0.2s;
+}
+.toggle-switch.on  .toggle-knob { left: 23px; }
+.toggle-switch.off .toggle-knob { left: 3px; }
 
 /* ── Workspace Select Screen ─────────────────────────────── */
 .ws-select-screen {
