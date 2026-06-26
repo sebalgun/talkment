@@ -25,11 +25,11 @@ export async function getDashboardStats() {
   const SHEET_NAMES = getSheetNames();
   const tabCfg = getTabConfig();
 
-  // masterStore returns already-parsed rows
+  // 탭 미존재 시 빈 배열로 폴백 — 일부 탭 없어도 통계 제공
   const [serialAssets, consumableAssets, rawSerialLog] = await Promise.all([
-    masterStore.loadSerialAssets(spreadsheetId),
-    masterStore.loadConsumableAssets(spreadsheetId),
-    fetchSheetRows(SHEET_NAMES.SERIAL_LOG),   // 반납 현황은 항상 최신 데이터
+    masterStore.loadSerialAssets(spreadsheetId).catch(() => []),
+    masterStore.loadConsumableAssets(spreadsheetId).catch(() => []),
+    fetchSheetRows(SHEET_NAMES.SERIAL_LOG).catch(() => []),
   ]);
   const remappedLog = tabCfg.remap(rawSerialLog, 'serialLog');
 
