@@ -69,29 +69,30 @@ function WorkspaceCard({ workspace, onSelect, isActive, onRename, onDelete }) {
       tabIndex={0}
       onKeyDown={editingName === null ? (e) => e.key === 'Enter' && onSelect(workspace.id) : undefined}
     >
-      {/* 옵션 메뉴 버튼 */}
-      <button className="ws-card-menu-btn" onClick={handleMenuClick} title="옵션">
-        ···
-      </button>
-
-      {menuOpen && (
-        <>
-          <div
-            className="ws-card-menu-overlay"
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}
-          />
-          <div className="ws-card-menu" onClick={(e) => e.stopPropagation()}>
-            <button onClick={handleRenameClick}>이름 수정</button>
-            <button className="ws-card-menu-delete" onClick={handleDeleteClick}>삭제</button>
-          </div>
-        </>
-      )}
-
       <div className="ws-card-header">
         <div className="ws-card-name">{workspace.name}</div>
-        <span className="ws-card-type-badge" style={{ background: type.color + '18', color: type.color }}>
-          {type.text}
-        </span>
+        <div className="ws-card-header-right">
+          <span className="ws-card-type-badge" style={{ background: type.color + '18', color: type.color }}>
+            {type.text}
+          </span>
+          <div className="ws-card-menu-wrap">
+            <button className="ws-card-menu-btn" onClick={handleMenuClick} title="옵션">
+              ···
+            </button>
+            {menuOpen && (
+              <>
+                <div
+                  className="ws-card-menu-overlay"
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}
+                />
+                <div className="ws-card-menu" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={handleRenameClick}>이름 수정</button>
+                  <button className="ws-card-menu-delete" onClick={handleDeleteClick}>삭제</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {!hasSheet ? (
