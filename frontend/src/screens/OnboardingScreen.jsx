@@ -81,7 +81,6 @@ function StepProgress({ current, total }) {
 function WorkspaceInfoStep({ onNext }) {
   const [name, setName] = useState('');
   const [operationType, setOperationType] = useState('internal');
-  const [inventoryType, setInventoryType] = useState('both');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -91,8 +90,7 @@ function WorkspaceInfoStep({ onNext }) {
     setLoading(true); setError(null);
     try {
       const workspace = await api.createWorkspace({ name: trimmed, operationType });
-      await api.updateInventoryType(workspace.id, inventoryType);
-      onNext({ ...workspace, inventoryType });
+      onNext(workspace);
     } catch (e) {
       setError(e.message || '저장에 실패했습니다.');
     } finally { setLoading(false); }
@@ -114,24 +112,6 @@ function WorkspaceInfoStep({ onNext }) {
           autoFocus
           onKeyDown={(e) => e.key === 'Enter' && handleNext()}
         />
-      </div>
-
-      <div className="form-group">
-        <label>관리 유형</label>
-        <div className="ob-type-options">
-          {INVENTORY_TYPES.map((opt) => (
-            <button key={opt.value} type="button"
-              className={`ob-type-btn ${inventoryType === opt.value ? 'active' : ''}`}
-              onClick={() => setInventoryType(opt.value)}
-            >
-              <span className="ob-type-radio">{inventoryType === opt.value ? '●' : '○'}</span>
-              <span className="ob-type-text">
-                <span className="ob-type-name">{opt.label}</span>
-                <span className="ob-type-desc">{opt.desc}</span>
-              </span>
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="form-group">
@@ -165,6 +145,7 @@ function WorkspaceInfoStep({ onNext }) {
 
 function SheetSetupStep({ workspace, onNext, onBack }) {
   const [url, setUrl] = useState('');
+  const [inventoryType, setInventoryType] = useState('both');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -175,11 +156,10 @@ function SheetSetupStep({ workspace, onNext, onBack }) {
     setLoading(true); setError(null);
     try {
       const [, { tabs }] = await Promise.all([
-        api.saveWorkspaceSheets(workspace.id, {
-          main: { spreadsheetId, url },
-        }),
+        api.saveWorkspaceSheets(workspace.id, { main: { spreadsheetId, url } }),
         api.getSheetTabs(spreadsheetId),
       ]);
+      await api.updateInventoryType(workspace.id, inventoryType);
       onNext({ spreadsheetId, tabs });
     } catch (e) {
       setError(e.message || '연결 실패. 서비스 계정 공유 권한을 확인해 주세요.');
@@ -189,7 +169,7 @@ function SheetSetupStep({ workspace, onNext, onBack }) {
   return (
     <div className="ob-step">
       <p className="setup-desc" style={{ textAlign: 'left' }}>
-        구글 스프레드시트 URL을 붙여넣으면 탭 목록을 자동으로 불러옵니다.
+        구글 스프레드시트 URL을 붙여넣고 관리 유형을 선택하세요.
       </p>
 
       <div className="form-group">
@@ -199,6 +179,24 @@ function SheetSetupStep({ workspace, onNext, onBack }) {
           placeholder="https://docs.google.com/spreadsheets/d/..."
         />
         {spreadsheetId && <span className="parsed-id">ID: {spreadsheetId}</span>}
+      </div>
+
+      <div className="form-group">
+        <label>관리 유형</label>
+        <div className="ob-type-options">
+          {INVENTORY_TYPES.map((opt) => (
+            <button key={opt.value} type="button"
+              className={`ob-type-btn ${inventoryType === opt.value ? 'active' : ''}`}
+              onClick={() => setInventoryType(opt.value)}
+            >
+              <span className="ob-type-radio">{inventoryType === opt.value ? '●' : '○'}</span>
+              <span className="ob-type-text">
+                <span className="ob-type-name">{opt.label}</span>
+                <span className="ob-type-desc">{opt.desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && <div className="status-msg error">{error}</div>}
