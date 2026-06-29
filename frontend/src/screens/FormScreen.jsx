@@ -54,6 +54,7 @@ export default function FormScreen() {
   const [employeeList, setEmployeeList] = useState([]);
   const [empQuery, setEmpQuery] = useState('');
   const [empDropOpen, setEmpDropOpen] = useState(false);
+  const [hasAttempted, setHasAttempted] = useState(false);
 
   useEffect(() => {
     api.getFieldOptions().then(setFieldOptions).catch(() => {});
@@ -241,6 +242,8 @@ export default function FormScreen() {
   };
 
   const handleConfirm = async () => {
+    setHasAttempted(true);
+    if (!canConfirm) return;
     if (!form || !hasEmployee) return;
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_STATUS', payload: null });
@@ -289,7 +292,7 @@ export default function FormScreen() {
       <section className="card">
         <h3>{isManualMode ? '반출 정보 입력' : '가공된 입력 폼'}</h3>
 
-        {blockingErrors.length > 0 && (
+        {(hasAttempted || !isManualMode) && blockingErrors.length > 0 && (
           <div className="validation-panel" role="alert">
             <strong>확인 필요</strong>
             <ul>
@@ -455,7 +458,7 @@ export default function FormScreen() {
       <button
         className="btn btn-primary"
         onClick={handleConfirm}
-        disabled={loading || !canConfirm}
+        disabled={loading || (!isManualMode && !canConfirm)}
       >
         {loading ? '처리 중...' : fieldOptions.requireSignature ? '출고 확정 → 서명' : '출고 확정'}
       </button>
